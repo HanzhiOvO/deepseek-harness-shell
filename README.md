@@ -1,6 +1,6 @@
 # DeepSeek Harness Shell（macOS 原生版）
 
-一个把 **DeepSeek Harness**（官方 `@deepseek-ai/dsh`）包装成 macOS 桌面应用的**原生 SwiftUI 壳**。
+一个把 **DeepSeek Harness**（官方 `@deepseek-ai/dsh`）包装成 macOS 桌面应用的**原生轻量化 SwiftUI 壳**。
 
 它不重新实现 Agent / Session / Tool / Sandbox / Cordis，只负责让内核更好用：
 
