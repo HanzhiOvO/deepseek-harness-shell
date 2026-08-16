@@ -24,6 +24,7 @@ import SettingsView from './views/SettingsView'
 import CommandPalette from './components/CommandPalette'
 import Toasts from './components/Toasts'
 import AboutModal from './components/AboutModal'
+import AppMark from './components/AppMark'
 
 const VIEW_META = {
   chat: { title: '对话', subtitle: 'DeepSeek Harness 工作区', icon: MessageSquare },
@@ -62,7 +63,7 @@ export default function App(): React.JSX.Element {
   }, [snapshot.paletteOpen])
 
   if (!snapshot.initialized) {
-    return <Splash />
+    return snapshot.initializationError ? <StartupError message={snapshot.initializationError} /> : <Splash />
   }
 
   const meta = VIEW_META[snapshot.view]
@@ -200,11 +201,31 @@ function Splash(): React.JSX.Element {
   return (
     <div className="grid h-full place-items-center bg-ink-950 text-white">
       <div className="flex flex-col items-center gap-5">
-        <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-900 shadow-lifted">
-          <Command size={24} />
+        <div className="grid size-16 place-items-center rounded-[22px] bg-ink-900 p-1 shadow-lifted ring-1 ring-white/10">
+          <AppMark className="size-full rounded-[18px]" />
         </div>
         <div className="shimmer h-2 w-40 rounded-full" />
         <div className="text-xs tracking-wide text-ink-400">DeepSeek Harness Shell · 正在启动</div>
+      </div>
+    </div>
+  )
+}
+
+function StartupError({ message }: { message: string }): React.JSX.Element {
+  return (
+    <div className="grid h-full place-items-center bg-ink-950 px-6 text-white">
+      <div className="flex max-w-[440px] flex-col items-center text-center">
+        <div className="grid size-16 place-items-center rounded-[22px] bg-ink-900 p-1 shadow-lifted ring-1 ring-red-400/30">
+          <AppMark className="size-full rounded-[18px]" />
+        </div>
+        <h1 className="mt-5 text-lg font-semibold">应用启动失败</h1>
+        <p className="mt-2 break-words text-xs leading-relaxed text-ink-400">{message}</p>
+        <button
+          onClick={() => void appStore.initialize()}
+          className="mt-5 rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+        >
+          重新尝试
+        </button>
       </div>
     </div>
   )

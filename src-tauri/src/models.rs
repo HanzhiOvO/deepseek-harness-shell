@@ -57,14 +57,46 @@ pub struct Toolchain {
 #[derive(Clone, Serialize, Debug)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum EnvironmentState {
-    Idle { label: String, can_install: bool, detail: String },
-    Checking { label: String, can_install: bool, detail: String },
-    Ready { label: String, can_install: bool, detail: String },
-    MissingDsh { label: String, can_install: bool, detail: String },
-    MissingNode { label: String, can_install: bool, detail: String },
-    MissingNpm { label: String, can_install: bool, detail: String },
-    Installing { label: String, can_install: bool, detail: String },
-    Failed { label: String, can_install: bool, detail: String },
+    Idle {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
+    Checking {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
+    Ready {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
+    MissingDsh {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
+    MissingNode {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
+    MissingNpm {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
+    Installing {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
+    Failed {
+        label: String,
+        can_install: bool,
+        detail: String,
+    },
 }
 
 #[derive(Clone, Serialize, Debug)]

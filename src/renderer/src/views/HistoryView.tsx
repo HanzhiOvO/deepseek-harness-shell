@@ -30,7 +30,7 @@ export default function HistoryView(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <header className="shrink-0 border-b border-ink-200/70 bg-white/50 px-5 py-4 dark:border-white/[0.06] dark:bg-ink-900/30">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-[17px] font-bold tracking-tight text-ink-900 dark:text-white">历史会话</h1>
             <p className="mt-0.5 text-[11px] text-ink-400">只读同步 DSH_HOME/sessions，与 Harness Web UI 使用同一份数据</p>

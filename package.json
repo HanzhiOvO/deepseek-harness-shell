@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-shell",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "DeepSeek Harness 跨平台桌面壳：Windows / macOS / Linux，原生级体验",
   "author": "DeepSeek Harness Shell contributors",
   "license": "MIT",
@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "tauri dev",
     "start": "tauri dev",
+    "dev:renderer": "vite --config vite.config.ts",
     "build": "npm run build:renderer",
     "build:renderer": "vite build --config vite.config.ts",
     "build:tauri": "tauri build",

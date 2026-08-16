@@ -11,12 +11,12 @@ import {
   RefreshCw,
   Rocket,
   ScrollText,
-  TerminalSquare,
   TriangleAlert,
   Wrench
 } from 'lucide-react'
 import { appStore, useAppStore } from '../state/store'
 import { relativeTime } from '@shared/parsers'
+import AppMark from './AppMark'
 
 export default function Placeholder(): React.JSX.Element {
   const snapshot = useAppStore()
@@ -30,8 +30,8 @@ export default function Placeholder(): React.JSX.Element {
 
       <div className="relative mx-auto flex min-h-full max-w-[760px] flex-col items-center px-8 py-12">
         <div className="animate-fade-up flex flex-col items-center text-center">
-          <div className="grid size-16 place-items-center rounded-[20px] bg-gradient-to-br from-brand-400 via-brand-600 to-brand-950 text-white shadow-lifted">
-            <TerminalSquare size={26} strokeWidth={2} />
+          <div className="grid size-16 place-items-center rounded-[20px] bg-ink-900 p-1 shadow-lifted ring-1 ring-brand-300/30 dark:bg-ink-950">
+            <AppMark className="size-full rounded-[16px]" />
           </div>
           <h1 className="mt-5 text-3xl font-bold tracking-tight text-ink-900 dark:text-white">DeepSeek Harness Shell</h1>
           <p className="text-balance mt-2 max-w-[540px] text-[13px] leading-relaxed text-ink-500 dark:text-ink-400">
@@ -79,18 +79,16 @@ export default function Placeholder(): React.JSX.Element {
           </div>
         )}
 
-        <div className="animate-fade-up mt-10 grid w-full max-w-[600px] grid-cols-3 gap-3" style={{ animationDelay: '150ms' }}>
+        <div className="animate-fade-up mt-10 grid w-full max-w-[600px] grid-cols-1 gap-3 sm:grid-cols-3" style={{ animationDelay: '150ms' }}>
           <FeatureCard icon={<Wrench size={15} />} title="自动环境" text="检测与一键安装 dsh / Node / pnpm" />
           <FeatureCard icon={<Blocks size={15} />} title="插件中心" text="GitHub / ZIP / 文件夹 / npm 安装" />
           <FeatureCard icon={<ScrollText size={15} />} title="实时日志" text="按来源与级别过滤，可导出" />
         </div>
 
         <div className="mt-8 flex items-center gap-2 text-[10.5px] text-ink-400">
-          <kbd className="rounded border border-ink-200 bg-white px-1.5 py-0.5 font-mono dark:border-white/10 dark:bg-white/5">⌘R</kbd> 启动
-          <span>·</span>
-          <kbd className="rounded border border-ink-200 bg-white px-1.5 py-0.5 font-mono dark:border-white/10 dark:bg-white/5">⌘.</kbd> 停止
-          <span>·</span>
           <kbd className="rounded border border-ink-200 bg-white px-1.5 py-0.5 font-mono dark:border-white/10 dark:bg-white/5">⌘K</kbd> 快速跳转
+          <span>·</span>
+          <span>启动与停止可在右上角控制</span>
         </div>
       </div>
     </div>

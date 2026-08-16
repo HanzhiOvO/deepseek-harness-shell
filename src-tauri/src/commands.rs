@@ -1,8 +1,10 @@
 use crate::models::*;
 use crate::services::*;
 use std::fs;
+#[cfg(target_os = "linux")]
+use std::path::Path;
 use tauri::async_runtime::spawn_blocking;
-use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 fn settings_clone(state: &State<AppState>) -> AppSettingsData {
     state.settings.lock().unwrap().data.clone()
@@ -17,14 +19,19 @@ pub fn app_bootstrap(app: AppHandle, state: State<AppState>) -> BootstrapPayload
     let profiles = state.plugins.profiles.lock().unwrap().clone();
     let profile_name = state.plugins.profile_name.lock().unwrap().clone();
     let sessions = state.sessions.sessions.lock().unwrap().clone();
-    let data_dir = app.path().app_data_dir().unwrap_or_default();
+    let data_dir = state
+        .settings
+        .lock()
+        .unwrap()
+        .data_directory(&app)
+        .unwrap_or_default();
     let dsh_home = dsh_home_directory(&settings);
     BootstrapPayload {
         platform: std::env::consts::OS.to_string(),
         version: app.package_info().version.to_string(),
         data_dirs: DataDirs {
             dsh_home: dsh_home.clone(),
-            profile_directory: format!("{dsh_home}/profiles/{profile_name}"),
+            profile_directory: state.plugins.profile_dir(&settings),
             settings_directory: data_dir.to_string_lossy().to_string(),
             plugin_sources_directory: data_dir.join("PluginSources").to_string_lossy().to_string(),
         },
@@ -126,7 +133,11 @@ pub fn web_open_external(state: State<AppState>) {
 }
 
 #[tauri::command]
-pub fn web_open_session(app: AppHandle, state: State<AppState>, request: OpenSessionRequest) -> Result<(), String> {
+pub fn web_open_session(
+    app: AppHandle,
+    state: State<AppState>,
+    request: OpenSessionRequest,
+) -> Result<(), String> {
     if !matches!(state.web.current(), WebServerState::Running { .. }) {
         let settings = settings_clone(&state);
         let env = state.environment.lock().unwrap();
@@ -143,13 +154,17 @@ pub fn web_open_session(app: AppHandle, state: State<AppState>, request: OpenSes
     }
 
     let script = session_open_script(&request.id, &request.display_title);
-    let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(url.parse::<url::Url>().map_err(|e| e.to_string())?))
-        .title(format!("Harness · {}", request.display_title))
-        .inner_size(1180.0, 780.0)
-        .min_inner_size(860.0, 620.0)
-        .initialization_script(&script)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let window = WebviewWindowBuilder::new(
+        &app,
+        &label,
+        WebviewUrl::External(url.parse::<url::Url>().map_err(|e| e.to_string())?),
+    )
+    .title(format!("Harness · {}", request.display_title))
+    .inner_size(1180.0, 780.0)
+    .min_inner_size(860.0, 620.0)
+    .initialization_script(&script)
+    .build()
+    .map_err(|e| e.to_string())?;
     let _ = window.set_focus();
     Ok(())
 }
@@ -163,12 +178,16 @@ pub fn web_open_window(app: AppHandle, state: State<AppState>) -> Result<(), Str
         let _ = existing.set_focus();
         return Ok(());
     }
-    WebviewWindowBuilder::new(&app, "harness-main", WebviewUrl::External(url.parse::<url::Url>().map_err(|e| e.to_string())?))
-        .title("DeepSeek Harness")
-        .inner_size(1180.0, 780.0)
-        .min_inner_size(860.0, 620.0)
-        .build()
-        .map_err(|_| "无法创建窗口".to_string())?;
+    WebviewWindowBuilder::new(
+        &app,
+        "harness-main",
+        WebviewUrl::External(url.parse::<url::Url>().map_err(|e| e.to_string())?),
+    )
+    .title("DeepSeek Harness")
+    .inner_size(1180.0, 780.0)
+    .min_inner_size(860.0, 620.0)
+    .build()
+    .map_err(|_| "无法创建窗口".to_string())?;
     Ok(())
 }
 
@@ -207,8 +226,14 @@ pub async fn plugins_refresh(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn plugins_set_profile(app: AppHandle, state: State<AppState>, name: String) {
-    let settings = settings_clone(&state);
-    state.plugins.set_profile(&app, &settings, name);
+    let settings = state
+        .settings
+        .lock()
+        .unwrap()
+        .update(&app, serde_json::json!({ "profileName": name }));
+    state
+        .plugins
+        .set_profile(&app, &settings, settings.profile_name.clone());
 }
 
 #[tauri::command]
@@ -221,10 +246,31 @@ pub async fn plugins_install(app: AppHandle, draft: InstallDraft) -> Result<(), 
             return Err("无法准备 pnpm，请查看运行日志".into());
         }
         match draft.kind.as_str() {
-            "github" => state.plugins.install_github(app.clone(), draft.github_text.unwrap_or_default(), &env, &settings),
-            "npm" => state.plugins.install_npm(app.clone(), draft.npm_text.unwrap_or_default(), &env, &settings),
-            "zip" => state.plugins.install_zip(app.clone(), draft.file_path.unwrap_or_default(), &env, &settings),
-            "folder" => state.plugins.install_folder(app.clone(), draft.file_path.unwrap_or_default(), None, &env, &settings),
+            "github" => state.plugins.install_github(
+                app.clone(),
+                draft.github_text.unwrap_or_default(),
+                &env,
+                &settings,
+            ),
+            "npm" => state.plugins.install_npm(
+                app.clone(),
+                draft.npm_text.unwrap_or_default(),
+                &env,
+                &settings,
+            ),
+            "zip" => state.plugins.install_zip(
+                app.clone(),
+                draft.file_path.unwrap_or_default(),
+                &env,
+                &settings,
+            ),
+            "folder" => state.plugins.install_folder(
+                app.clone(),
+                draft.file_path.unwrap_or_default(),
+                None,
+                &env,
+                &settings,
+            ),
             _ => Err("未知安装方式".into()),
         }
     })
@@ -266,9 +312,16 @@ pub async fn plugins_remove(app: AppHandle, name: String) -> Result<(), String> 
 pub async fn plugins_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
     spawn_blocking(move || {
         use tauri_plugin_dialog::DialogExt;
-        let picked = app.dialog().file().add_filter("ZIP", &["zip"]).blocking_pick_file();
+        let picked = app
+            .dialog()
+            .file()
+            .add_filter("ZIP", &["zip"])
+            .blocking_pick_file();
         match picked {
-            Some(path) => path.into_path().ok().map(|p| p.to_string_lossy().to_string()),
+            Some(path) => path
+                .into_path()
+                .ok()
+                .map(|p| p.to_string_lossy().to_string()),
             None => None,
         }
     })
@@ -281,7 +334,10 @@ pub async fn plugins_pick_folder(app: AppHandle) -> Result<Option<String>, Strin
     spawn_blocking(move || {
         use tauri_plugin_dialog::DialogExt;
         match app.dialog().file().blocking_pick_folder() {
-            Some(path) => path.into_path().ok().map(|p| p.to_string_lossy().to_string()),
+            Some(path) => path
+                .into_path()
+                .ok()
+                .map(|p| p.to_string_lossy().to_string()),
             None => None,
         }
     })
@@ -290,27 +346,60 @@ pub async fn plugins_pick_folder(app: AppHandle) -> Result<Option<String>, Strin
 }
 
 #[tauri::command]
-pub fn settings_update(app: AppHandle, state: State<AppState>, patch: serde_json::Value) -> AppSettingsData {
+pub fn settings_update(
+    app: AppHandle,
+    state: State<AppState>,
+    patch: serde_json::Value,
+) -> AppSettingsData {
+    let previous = settings_clone(&state);
     let updated = state.settings.lock().unwrap().update(&app, patch);
-    state.environment.lock().unwrap().refresh_overrides(&updated);
+    state
+        .environment
+        .lock()
+        .unwrap()
+        .refresh_overrides(&updated);
+    if updated.profile_name != previous.profile_name || updated.dsh_home != previous.dsh_home {
+        state.plugins.refresh(&app, &updated);
+    }
     updated
 }
 
 #[tauri::command]
 pub fn settings_reset(app: AppHandle, state: State<AppState>) -> AppSettingsData {
-    state.settings.lock().unwrap().reset(&app)
+    let updated = state.settings.lock().unwrap().reset(&app);
+    state
+        .environment
+        .lock()
+        .unwrap()
+        .refresh_overrides(&updated);
+    state.plugins.refresh(&app, &updated);
+    updated
 }
 
 #[tauri::command]
-pub fn logs_clear(state: State<AppState>, source: Option<String>) {
-    state.logs.lock().unwrap().clear(source.as_deref());
+pub fn logs_clear(app: AppHandle, state: State<AppState>, source: Option<String>) {
+    let logs = {
+        let mut store = state.logs.lock().unwrap();
+        store.clear(source.as_deref());
+        store.snapshot_json()
+    };
+    let _ = app.emit("event:logs", logs);
 }
 
 #[tauri::command]
-pub async fn logs_export(app: AppHandle, text: String, default_name: String) -> Result<bool, String> {
+pub async fn logs_export(
+    app: AppHandle,
+    text: String,
+    default_name: String,
+) -> Result<bool, String> {
     spawn_blocking(move || {
         use tauri_plugin_dialog::DialogExt;
-        let picked = app.dialog().file().set_file_name(&default_name).add_filter("文本", &["txt"]).blocking_save_file();
+        let picked = app
+            .dialog()
+            .file()
+            .set_file_name(&default_name)
+            .add_filter("文本", &["txt"])
+            .blocking_save_file();
         if let Some(path) = picked.and_then(|p| p.into_path().ok()) {
             fs::write(path, text).is_ok()
         } else {
@@ -380,14 +469,19 @@ fn session_open_script(id: &str, title: &str) -> String {
 }
 
 fn sanitize_label(id: &str) -> String {
-    id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(48).collect::<String>()
+    id.chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
+        .take(48)
+        .collect::<String>()
 }
 
 fn open_external(url: &str) {
     #[cfg(target_os = "macos")]
     let _ = std::process::Command::new("open").arg(url).spawn();
     #[cfg(target_os = "windows")]
-    let _ = std::process::Command::new("cmd").args(["/C", "start", "", url]).spawn();
+    let _ = std::process::Command::new("cmd")
+        .args(["/C", "start", "", url])
+        .spawn();
     #[cfg(target_os = "linux")]
     let _ = std::process::Command::new("xdg-open").arg(url).spawn();
 }
@@ -396,22 +490,31 @@ fn open_path(path: &str) {
     #[cfg(target_os = "macos")]
     let _ = std::process::Command::new("open").arg(path).spawn();
     #[cfg(target_os = "windows")]
-    let _ = std::process::Command::new("cmd").args(["/C", "start", "", path]).spawn();
+    let _ = std::process::Command::new("cmd")
+        .args(["/C", "start", "", path])
+        .spawn();
     #[cfg(target_os = "linux")]
     let _ = std::process::Command::new("xdg-open").arg(path).spawn();
 }
 
 fn reveal_path(path: &str) {
     #[cfg(target_os = "macos")]
-    let _ = std::process::Command::new("open").args(["-R", path]).spawn();
+    let _ = std::process::Command::new("open")
+        .args(["-R", path])
+        .spawn();
     #[cfg(target_os = "windows")]
-    let _ = std::process::Command::new("explorer").arg(format!("/select,{path}")).spawn();
+    let _ = std::process::Command::new("explorer")
+        .arg(format!("/select,{path}"))
+        .spawn();
     #[cfg(target_os = "linux")]
     let _ = {
         if let Some(parent) = Path::new(path).parent() {
             std::process::Command::new("xdg-open").arg(parent).spawn()
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::NotFound, "no parent"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "no parent",
+            ))
         }
     };
 }

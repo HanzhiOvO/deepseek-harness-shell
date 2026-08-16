@@ -97,7 +97,12 @@ export default function SettingsView(): React.JSX.Element {
           <Section title="启动与运行" icon={<HardDrive size={14} />}>
             <ToggleRow label="启动应用时自动连接 Web UI" checked={settings.autoStartWeb} onChange={(value) => update({ autoStartWeb: value })} />
             <ToggleRow label="检测到缺少 dsh 时自动安装" checked={settings.autoInstallDsh} onChange={(value) => update({ autoInstallDsh: value })} />
-            <ToggleRow label="关闭窗口时停止服务并退出" checked={settings.stopWhenClosed} onChange={(value) => update({ stopWhenClosed: value })} hint="关闭时保留到菜单栏/托盘，可降低停止后再启动的等待" />
+            <ToggleRow
+              label="关闭窗口时停止服务并退出"
+              checked={settings.stopWhenClosed}
+              onChange={(value) => update({ stopWhenClosed: value })}
+              hint={settings.stopWhenClosed ? '关闭窗口后停止 dsh；关闭此项可让服务继续在托盘运行' : '关闭窗口后隐藏到托盘，dsh Web UI 继续运行'}
+            />
             <ToggleRow label="关闭 dsh 遥测" checked={settings.telemetryDisabled} onChange={(value) => update({ telemetryDisabled: value })} />
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div>
@@ -150,7 +155,7 @@ export default function SettingsView(): React.JSX.Element {
                 {([snapshot.tools.dsh, snapshot.tools.node, snapshot.tools.npm, snapshot.tools.pnpm, snapshot.tools.git, snapshot.tools.brew].filter(Boolean) as { name: string; path: string; version: string | null }[]).map((tool) => (
                   <div key={tool.name} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[11px] hover:bg-ink-50 dark:hover:bg-white/[0.03]">
                     <span className="w-10 shrink-0 font-mono font-semibold text-ink-700 dark:text-ink-200">{tool.name}</span>
-                    <span className="min-w-0 flex-1 truncate font-mono text-ink-400" title={tool.path}>{tool.path}</span>
+                    <span className="selectable min-w-0 flex-1 truncate font-mono text-ink-400" title={tool.path}>{tool.path}</span>
                     <span className="shrink-0 rounded bg-ink-100 px-1.5 py-0.5 font-mono text-[10px] text-ink-500 dark:bg-white/[0.06] dark:text-ink-400">{tool.version ?? '?'}</span>
                     <button onClick={() => void window.api.shell.reveal(tool.path)} className="grid size-6 place-items-center rounded text-ink-400 hover:bg-ink-100 dark:hover:bg-white/5" title="在 Finder 中显示">
                       <FolderOpen size={12} />
@@ -184,8 +189,8 @@ export default function SettingsView(): React.JSX.Element {
 
       {confirmReset && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-ink-950/35 p-6 backdrop-blur-sm" onMouseDown={() => setConfirmReset(false)}>
-          <div className="animate-scale-in w-full max-w-[420px] rounded-2xl border border-ink-200 bg-white p-5 shadow-lifted dark:border-white/10 dark:bg-ink-900" onMouseDown={(event) => event.stopPropagation()}>
-            <h3 className="text-[15px] font-semibold text-ink-900 dark:text-white">重置全部设置？</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby="reset-settings-title" className="animate-scale-in w-full max-w-[420px] rounded-2xl border border-ink-200 bg-white p-5 shadow-lifted dark:border-white/10 dark:bg-ink-900" onMouseDown={(event) => event.stopPropagation()}>
+            <h3 id="reset-settings-title" className="text-[15px] font-semibold text-ink-900 dark:text-white">重置全部设置？</h3>
             <p className="mt-2 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">清除 API Key、端口、profile、DSH_HOME 与收藏等所有偏好；会话与插件数据不会被删除。</p>
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setConfirmReset(false)} className="rounded-lg border border-ink-200 px-3.5 py-1.5 text-[12px] font-medium text-ink-600 dark:border-white/10 dark:text-ink-300">取消</button>

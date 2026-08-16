@@ -21,6 +21,7 @@ export interface Toast {
 
 export interface AppSnapshot {
   initialized: boolean
+  initializationError: string | null
   appVersion: string
   view: ViewId
   paletteOpen: boolean
@@ -55,7 +56,8 @@ const EMPTY_TOOLS: Toolchain = {
 
 let snapshot: AppSnapshot = {
   initialized: false,
-  appVersion: '2.0.0',
+  initializationError: null,
+  appVersion: '1.1.0',
   view: 'chat',
   paletteOpen: false,
   dataDirs: { dshHome: '', profileDirectory: '', settingsDirectory: '', pluginSourcesDirectory: '' },
@@ -117,21 +119,27 @@ export const appStore = {
   },
   appendLog,
   async initialize(): Promise<void> {
-    const payload = await window.api.bootstrap()
-    patch({
-      initialized: true,
-      appVersion: payload.version,
-      dataDirs: payload.dataDirs,
-      settings: payload.settings,
-      envState: payload.environment.state,
-      tools: payload.environment.tools,
-      envWorking: payload.environment.isWorking,
-      webState: payload.web,
-      sessions: payload.sessions,
-      plugins: payload.plugins,
-      profiles: payload.profiles,
-      logs: payload.logs
-    })
+    patch({ initializationError: null })
+    try {
+      const payload = await window.api.bootstrap()
+      patch({
+        initialized: true,
+        initializationError: null,
+        appVersion: payload.version,
+        dataDirs: payload.dataDirs,
+        settings: payload.settings,
+        envState: payload.environment.state,
+        tools: payload.environment.tools,
+        envWorking: payload.environment.isWorking,
+        webState: payload.web,
+        sessions: payload.sessions,
+        plugins: payload.plugins,
+        profiles: payload.profiles,
+        logs: payload.logs
+      })
+    } catch (error) {
+      patch({ initializationError: error instanceof Error ? error.message : String(error) })
+    }
   }
 }
 
@@ -145,6 +153,7 @@ if (typeof window !== 'undefined' && window.api) {
   window.api.on('plugins', (plugins) => patch({ plugins }))
   window.api.on('profiles', (profiles) => patch({ profiles }))
   window.api.on('settings', (settings) => patch({ settings }))
+  window.api.on('logs', (logs) => patch({ logs }))
   window.api.on('menu-action', (action) => {
     if (action === 'palette') appStore.setPaletteOpen(true)
     else if (action === 'plugins') appStore.setView('plugins')

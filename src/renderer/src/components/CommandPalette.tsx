@@ -91,6 +91,9 @@ export default function CommandPalette(): React.JSX.Element {
   return (
     <div className="fixed inset-0 z-50 bg-ink-950/30 backdrop-blur-[3px]" onMouseDown={close}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="命令面板"
         className="animate-scale-in mx-auto mt-[10vh] w-[620px] max-w-[calc(100vw-40px)] overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-lifted dark:border-white/10 dark:bg-ink-900"
         onMouseDown={(event) => event.stopPropagation()}
       >

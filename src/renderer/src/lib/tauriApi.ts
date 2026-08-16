@@ -6,8 +6,16 @@ import type { DesktopApi } from '@shared/api'
 type Handler = (payload: unknown) => void
 
 function on(channel: string, listener: Handler): () => void {
-  void listen(`event:${channel}`, (event) => listener(event.payload))
-  return () => undefined
+  let active = true
+  let unlisten: (() => void) | null = null
+  void listen(`event:${channel}`, (event) => listener(event.payload)).then((cleanup) => {
+    if (active) unlisten = cleanup
+    else cleanup()
+  })
+  return () => {
+    active = false
+    unlisten?.()
+  }
 }
 
 let droppedPath = ''

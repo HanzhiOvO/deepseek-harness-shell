@@ -52,7 +52,7 @@ export default function LogsView(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <header className="shrink-0 border-b border-ink-200/70 bg-white/50 px-5 py-4 dark:border-white/[0.06] dark:bg-ink-900/30">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-[17px] font-bold tracking-tight text-ink-900 dark:text-white">运行日志</h1>
             <p className="mt-0.5 text-[11px] text-ink-400">按来源与级别筛选，共 {entries.length} 条</p>
@@ -141,7 +141,7 @@ function LogRow({ entry }: { entry: LogEntry }): React.JSX.Element {
             : 'text-ink-700 dark:text-ink-300'
 
   return (
-    <div className="flex items-start gap-2 rounded-md px-2 py-1 text-[10.5px] leading-relaxed hover:bg-ink-50 dark:hover:bg-white/[0.03]">
+    <div className="selectable flex items-start gap-2 rounded-md px-2 py-1 text-[10.5px] leading-relaxed hover:bg-ink-50 dark:hover:bg-white/[0.03]">
       <span className="shrink-0 text-ink-300 dark:text-ink-600">{new Date(entry.date).toLocaleTimeString('zh-CN', { hour12: false })}</span>
       <span className="shrink-0 rounded bg-ink-100 px-1 text-[9px] text-ink-400 dark:bg-white/[0.06] dark:text-ink-500">
         {entry.source === 'environment' ? 'ENV' : entry.source === 'web' ? 'WEB' : entry.source === 'plugins' ? 'PLUG' : 'SES'}

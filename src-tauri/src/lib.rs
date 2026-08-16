@@ -4,7 +4,12 @@ mod services;
 
 use commands::*;
 use services::*;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::tray::TrayIconBuilder;
 use tauri::{Manager, WindowEvent};
+
+struct ExitState(AtomicBool);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,6 +22,7 @@ pub fn run() {
             }
         }))
         .manage(AppState::new(SettingsService::new()))
+        .manage(ExitState(AtomicBool::new(false)))
         .invoke_handler(tauri::generate_handler![
             app_bootstrap,
             env_detect,
@@ -49,6 +55,7 @@ pub fn run() {
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+            setup_tray(app)?;
             if std::env::var("DSH_SHELL_SMOKE").as_deref() == Ok("1") {
                 initial_setup(&handle)?;
                 rust_smoke(&handle);
@@ -60,14 +67,78 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    let app = window.app_handle();
+                    let should_hide = !app.state::<ExitState>().0.load(Ordering::SeqCst)
+                        && !app
+                            .state::<AppState>()
+                            .settings
+                            .lock()
+                            .unwrap()
+                            .data
+                            .stop_when_closed;
+                    if should_hide {
+                        api.prevent_close();
+                        let _ = window.hide();
+                        return;
+                    }
+                }
+            }
             if matches!(event, WindowEvent::Destroyed) && window.label() == "main" {
                 let app = window.app_handle().clone();
                 let state = app.state::<AppState>();
-                state.web.stop(&app);
+                if state.settings.lock().unwrap().data.stop_when_closed {
+                    state.web.stop(&app);
+                }
             }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
+    let show = MenuItemBuilder::with_id("show", "显示主窗口").build(app)?;
+    let start = MenuItemBuilder::with_id("start", "启动 Web UI").build(app)?;
+    let stop = MenuItemBuilder::with_id("stop", "停止 Web UI").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
+    let menu = MenuBuilder::new(app)
+        .items(&[&show, &start, &stop, &quit])
+        .build()?;
+    let mut tray = TrayIconBuilder::new()
+        .menu(&menu)
+        .tooltip("DeepSeek Harness Shell")
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => show_main_window(app),
+            "start" => {
+                let state = app.state::<AppState>();
+                let settings = state.settings.lock().unwrap().data.clone();
+                let environment = state.environment.lock().unwrap();
+                state.web.start(app, &environment, &settings);
+                show_main_window(app);
+            }
+            "stop" => {
+                app.state::<AppState>().web.stop(app);
+            }
+            "quit" => {
+                app.state::<ExitState>().0.store(true, Ordering::SeqCst);
+                app.state::<AppState>().web.stop(app);
+                app.exit(0);
+            }
+            _ => {}
+        });
+    if let Some(icon) = app.default_window_icon().cloned() {
+        tray = tray.icon(icon);
+    }
+    tray.build(app)?;
+    Ok(())
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
 
 fn initial_setup(app: &tauri::AppHandle) -> tauri::Result<()> {
@@ -93,7 +164,9 @@ fn initial_setup(app: &tauri::AppHandle) -> tauri::Result<()> {
     {
         let settings = state.settings.lock().unwrap().data.clone();
         let environment = state.environment.lock().unwrap();
-        if matches!(environment.state, models::EnvironmentState::Ready { .. }) && settings.auto_start_web {
+        if matches!(environment.state, models::EnvironmentState::Ready { .. })
+            && settings.auto_start_web
+        {
             state.web.start(app, &environment, &settings);
         }
     }
@@ -118,7 +191,11 @@ fn rust_smoke(app: &tauri::AppHandle) {
             let mut env = state.environment.lock().unwrap();
             env.install_dsh(app, &settings, true)
         };
-        println!("UPDATE {} in {:?}s", if result { "PASS" } else { "FAIL" }, started.elapsed().as_secs());
+        println!(
+            "UPDATE {} in {:?}s",
+            if result { "PASS" } else { "FAIL" },
+            started.elapsed().as_secs()
+        );
         app.exit(if result { 0 } else { 1 });
         return;
     }
@@ -188,12 +265,38 @@ fn rust_smoke(app: &tauri::AppHandle) {
 
         let settings = state.settings.lock().unwrap().data.clone();
         let env = state.environment.lock().unwrap();
-        state.plugins.install_folder(app.clone(), temp.to_string_lossy().to_string(), None, &env, &settings).unwrap();
+        state
+            .plugins
+            .install_folder(
+                app.clone(),
+                temp.to_string_lossy().to_string(),
+                None,
+                &env,
+                &settings,
+            )
+            .unwrap();
         let installed = state.plugins.installed.lock().unwrap().clone();
-        let plugin = installed.iter().find(|p| p.name == "smoke-tauri-plugin").cloned().expect("plugin not installed");
-        state.plugins.update(app.clone(), plugin.name.clone(), &env, &settings).unwrap();
-        state.plugins.remove(app.clone(), plugin.name.clone(), &env, &settings).unwrap();
-        if state.plugins.installed.lock().unwrap().iter().any(|p| p.name == "smoke-tauri-plugin") {
+        let plugin = installed
+            .iter()
+            .find(|p| p.name == "smoke-tauri-plugin")
+            .cloned()
+            .expect("plugin not installed");
+        state
+            .plugins
+            .update(app.clone(), plugin.name.clone(), &env, &settings)
+            .unwrap();
+        state
+            .plugins
+            .remove(app.clone(), plugin.name.clone(), &env, &settings)
+            .unwrap();
+        if state
+            .plugins
+            .installed
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|p| p.name == "smoke-tauri-plugin")
+        {
             println!("PLUGIN SMOKE FAIL");
             app.exit(1);
             return;

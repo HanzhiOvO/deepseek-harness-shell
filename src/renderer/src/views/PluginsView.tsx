@@ -47,7 +47,7 @@ export default function PluginsView(): React.JSX.Element {
   return (
     <div className="relative flex h-full flex-col" onDragOver={(event) => { event.preventDefault(); setDragOver(true) }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
       <header className="shrink-0 border-b border-ink-200/70 bg-white/50 px-5 py-4 dark:border-white/[0.06] dark:bg-ink-900/30">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-800 text-white shadow-soft">
               <Blocks size={17} />
@@ -57,7 +57,7 @@ export default function PluginsView(): React.JSX.Element {
               <p className="mt-0.5 text-[11px] text-ink-400">通过 dsh plugin 安装进 profile，自动 reconcile bundle 层</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
               {plugins.length} 个插件
             </span>
@@ -192,7 +192,7 @@ function PluginCard({
               color={plugin.isInbox ? 'text-ink-500 dark:text-ink-400 bg-ink-100 dark:bg-white/[0.06]' : 'text-ink-600 dark:text-ink-300 bg-ink-100 dark:bg-white/[0.06]'}
             />
           </div>
-          <div className="mt-1 truncate font-mono text-[10.5px] text-ink-400" title={plugin.spec}>{plugin.spec}</div>
+          <div className="selectable mt-1 truncate font-mono text-[10.5px] text-ink-400" title={plugin.spec}>{plugin.spec}</div>
           {plugin.version && <div className="mt-0.5 text-[10px] font-medium text-ink-300 dark:text-ink-500">v{plugin.version}</div>}
         </div>
         {!plugin.isInbox && (
@@ -263,8 +263,8 @@ function ConfirmModal({
 }): React.JSX.Element {
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-ink-950/35 p-6 backdrop-blur-sm" onMouseDown={onCancel}>
-      <div className="animate-scale-in w-full max-w-[420px] rounded-2xl border border-ink-200 bg-white p-5 shadow-lifted dark:border-white/10 dark:bg-ink-900" onMouseDown={(event) => event.stopPropagation()}>
-        <h3 className="text-[15px] font-semibold text-ink-900 dark:text-white">{title}</h3>
+      <div role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" className="animate-scale-in w-full max-w-[420px] rounded-2xl border border-ink-200 bg-white p-5 shadow-lifted dark:border-white/10 dark:bg-ink-900" onMouseDown={(event) => event.stopPropagation()}>
+        <h3 id="confirm-modal-title" className="text-[15px] font-semibold text-ink-900 dark:text-white">{title}</h3>
         <p className="mt-2 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">{message}</p>
         <div className="mt-5 flex justify-end gap-2">
           <button onClick={onCancel} className="rounded-lg border border-ink-200 bg-white px-3.5 py-1.5 text-[12px] font-medium text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">

@@ -68,12 +68,15 @@ export default function InstallPluginModal({ draft, onClose }: { draft: InstallD
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/35 p-6 backdrop-blur-sm" onMouseDown={onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-plugin-title"
         className="animate-scale-in flex max-h-[86vh] w-full max-w-[620px] flex-col rounded-2xl border border-ink-200 bg-white shadow-lifted dark:border-white/10 dark:bg-ink-900"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-ink-200/70 px-5 py-4 dark:border-white/[0.06]">
           <div>
-            <h2 className="text-[16px] font-bold text-ink-900 dark:text-white">安装插件</h2>
+            <h2 id="install-plugin-title" className="text-[16px] font-bold text-ink-900 dark:text-white">安装插件</h2>
             <p className="mt-0.5 text-[11px] text-ink-400">安装到 profile「{snapshot.settings?.profileName ?? 'web'}」· 插件是本地代码，只安装信任来源</p>
           </div>
           <button onClick={onClose} className="grid size-7 place-items-center rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-white/5">

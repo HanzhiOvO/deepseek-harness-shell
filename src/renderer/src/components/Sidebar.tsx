@@ -7,10 +7,10 @@ import {
   ScrollText,
   Search,
   Settings,
-  TerminalSquare
 } from 'lucide-react'
 import { appStore, useAppStore } from '../state/store'
 import { relativeTime } from '@shared/parsers'
+import AppMark from './AppMark'
 
 const NAV_ITEMS = [
   { id: 'chat', label: '对话', icon: MessageSquare },
@@ -26,18 +26,18 @@ export default function Sidebar(): React.JSX.Element {
   const recent = snapshot.sessions.slice(0, 30)
 
   return (
-    <aside className="flex w-[260px] shrink-0 flex-col border-r border-ink-200/70 bg-white/60 dark:border-white/[0.06] dark:bg-ink-900/40">
-      <div className="app-drag flex h-14 shrink-0 items-center gap-2.5 px-3.5">
-        <div className="grid size-8 place-items-center rounded-[10px] bg-gradient-to-br from-brand-400 to-brand-900 text-white shadow-soft">
-          <TerminalSquare size={14} strokeWidth={2.2} />
+    <aside className="sidebar-shell flex w-[260px] shrink-0 flex-col border-r border-ink-200/70 bg-white/60 dark:border-white/[0.06] dark:bg-ink-900/40">
+      <div className="sidebar-brand app-drag flex h-14 shrink-0 items-center gap-2.5 px-3.5">
+        <div className="grid size-8 place-items-center rounded-[10px] bg-ink-900 p-0.5 shadow-soft ring-1 ring-brand-300/30 dark:bg-ink-950">
+          <AppMark className="size-full rounded-[8px]" />
         </div>
-        <div className="leading-tight">
+        <div className="sidebar-brand-copy leading-tight">
           <div className="text-[13px] font-semibold tracking-tight">DeepSeek Harness</div>
           <div className="text-[10.5px] font-medium text-ink-400">Shell · v{snapshot.appVersion}</div>
         </div>
       </div>
 
-      <div className="app-no-drag px-3 pb-2">
+      <div className="sidebar-search app-no-drag px-3 pb-2">
         <button
           onClick={() => appStore.setPaletteOpen(true)}
           className="flex h-8 w-full items-center gap-2 rounded-lg border border-ink-200 bg-ink-50 px-2.5 text-[11.5px] text-ink-500 shadow-soft transition hover:border-brand-300 hover:bg-white hover:text-brand-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-brand-500/40 dark:hover:bg-white/[0.07] dark:hover:text-brand-300"
@@ -56,16 +56,16 @@ export default function Sidebar(): React.JSX.Element {
             <button
               key={item.id}
               onClick={() => appStore.setView(item.id)}
-              className={`mb-0.5 flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-[12.5px] font-medium transition ${
+              className={`sidebar-nav-button mb-0.5 flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-[12.5px] font-medium transition ${
                 active
                   ? 'bg-brand-50 text-brand-700 shadow-soft dark:bg-brand-500/15 dark:text-brand-200'
                   : 'text-ink-600 hover:bg-ink-100/80 hover:text-ink-900 dark:text-ink-400 dark:hover:bg-white/5 dark:hover:text-ink-50'
               }`}
             >
               <Icon size={15} strokeWidth={active ? 2.4 : 2} />
-              <span className="flex-1 text-left">{item.label}</span>
+              <span className="sidebar-nav-label flex-1 text-left">{item.label}</span>
               {item.id === 'plugins' && snapshot.plugins.length > 2 && (
-                <span className="rounded-full bg-ink-100 px-1.5 text-[9.5px] text-ink-500 dark:bg-white/10 dark:text-ink-400">
+                <span className="sidebar-nav-count rounded-full bg-ink-100 px-1.5 text-[9.5px] text-ink-500 dark:bg-white/10 dark:text-ink-400">
                   {snapshot.plugins.length}
                 </span>
               )}
@@ -74,7 +74,7 @@ export default function Sidebar(): React.JSX.Element {
         })}
       </nav>
 
-      <div className="app-no-drag mt-4 min-h-0 flex-1 overflow-y-auto px-3">
+      <div className="sidebar-session-list app-no-drag mt-4 min-h-0 flex-1 overflow-y-auto px-3">
         {pinned.length > 0 && (
           <section className="mb-3">
             <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
@@ -108,7 +108,7 @@ export default function Sidebar(): React.JSX.Element {
       <div className="app-no-drag shrink-0 border-t border-ink-200/70 p-3 dark:border-white/[0.06]">
         <StatusRow label={snapshot.envState?.label ?? '环境检测中'} color={envColor(snapshot.envState?.kind)} />
         <StatusRow label={webLabel(snapshot.webState.kind)} color={webColor(snapshot.webState.kind)} />
-        <div className="mt-1.5 text-[10px] text-ink-400">
+        <div className="sidebar-status-detail mt-1.5 text-[10px] text-ink-400">
           会话 {snapshot.sessions.length} 个
           {snapshot.settings?.profileName ? ` · profile ${snapshot.settings.profileName}` : ''}
         </div>
@@ -142,9 +142,9 @@ function SessionRow({ session, pinned }: { session: import('@shared/types').Sess
 
 function StatusRow({ label, color }: { label: string; color: string }): React.JSX.Element {
   return (
-    <div className="mb-1 flex items-center gap-2 text-[10.5px] text-ink-500 dark:text-ink-400">
+    <div className="sidebar-status-row mb-1 flex items-center gap-2 text-[10.5px] text-ink-500 dark:text-ink-400">
       <span className={`size-1.5 rounded-full ${color}`} />
-      <span className="truncate">{label}</span>
+      <span className="sidebar-status-label truncate">{label}</span>
     </div>
   )
 }

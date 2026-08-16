@@ -28,6 +28,8 @@ describe('GitHubSpecParser', () => {
     expect(() => parseGitHubSpec('')).toThrow()
     expect(() => parseGitHubSpec('not-a-repo')).toThrow()
     expect(() => parseGitHubSpec('https://gitlab.com/a/b')).toThrow()
+    expect(() => parseGitHubSpec('https://evil-github.com/a/b')).toThrow()
+    expect(() => parseGitHubSpec('https://github.com.evil/a/b')).toThrow()
   })
 })
 
@@ -44,6 +46,7 @@ describe('web URL', () => {
   it('解析 dsh stdout', () => {
     expect(parseWebURL('dsh web: http://127.0.0.1:54288')?.port).toBe('54288')
     expect(parseWebURL('listening at http://localhost:3080/')?.port).toBe('3080')
+    expect(parseWebURL('secure at https://localhost:8443')?.port).toBe('8443')
     expect(parseWebURL('random text')).toBeNull()
   })
 })

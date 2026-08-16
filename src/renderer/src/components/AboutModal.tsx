@@ -1,5 +1,6 @@
-import { Blocks, Cpu, Leaf, TerminalSquare, X } from 'lucide-react'
+import { Blocks, Cpu, Leaf, X } from 'lucide-react'
 import { useAppStore } from '../state/store'
+import AppMark from './AppMark'
 
 export default function AboutModal({ open, onClose }: { open: boolean; onClose: () => void }): React.JSX.Element | null {
   const snapshot = useAppStore()
@@ -8,16 +9,19 @@ export default function AboutModal({ open, onClose }: { open: boolean; onClose: 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/35 p-6 backdrop-blur-sm" onMouseDown={onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="about-title"
         className="animate-scale-in w-full max-w-[520px] rounded-2xl border border-ink-200 bg-white p-6 shadow-lifted dark:border-white/10 dark:bg-ink-900"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-900 text-white shadow-lifted">
-              <TerminalSquare size={20} />
+            <div className="grid size-12 place-items-center rounded-2xl bg-ink-900 p-0.5 shadow-lifted ring-1 ring-brand-300/30 dark:bg-ink-950">
+              <AppMark className="size-full rounded-[14px]" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">DeepSeek Harness Shell</h2>
+              <h2 id="about-title" className="text-lg font-semibold tracking-tight">DeepSeek Harness Shell</h2>
               <p className="text-xs text-ink-500 dark:text-ink-400">社区项目 · v{snapshot.appVersion} · 不代表 DeepSeek 官方立场</p>
             </div>
           </div>

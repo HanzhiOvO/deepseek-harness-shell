@@ -55,11 +55,33 @@ body {
   text-rendering: optimizeLegibility;
   overflow: hidden;
   user-select: none;
+  background:
+    radial-gradient(circle at 12% -10%, rgb(91 130 251 / 0.08), transparent 34%),
+    var(--color-ink-50);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-brand-400);
+  outline-offset: 2px;
 }
 
 input,
 textarea,
 [contenteditable] {
+  user-select: text;
+}
+
+.selectable {
   user-select: text;
 }
 
@@ -167,4 +189,51 @@ textarea,
 
 .input-base {
   @apply w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-900 shadow-soft outline-none transition placeholder:text-ink-300 focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-50 dark:placeholder:text-ink-600;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at 12% -10%, rgb(59 99 240 / 0.14), transparent 34%),
+    var(--color-ink-950);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .sidebar-shell {
+    width: 72px;
+  }
+
+  .sidebar-brand-copy,
+  .sidebar-search,
+  .sidebar-session-list,
+  .sidebar-status-detail,
+  .sidebar-status-label,
+  .sidebar-nav-count,
+  .sidebar-nav-label {
+    display: none;
+  }
+
+  .sidebar-brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .sidebar-nav-button {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .sidebar-status-row {
+    justify-content: center;
+  }
 }

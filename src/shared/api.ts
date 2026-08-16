@@ -5,6 +5,7 @@ import type {
   InstallDraft,
   InstalledPlugin,
   LogEntry,
+  LogSource,
   SessionSummary,
   Toolchain,
   WebBounds,
@@ -23,6 +24,7 @@ export type EventChannel =
   | 'plugins'
   | 'profiles'
   | 'settings'
+  | 'logs'
   | 'menu-action'
   | 'open-session'
 
@@ -96,6 +98,7 @@ export interface DesktopApi {
   on(channel: 'plugins', listener: (plugins: InstalledPlugin[]) => void): () => void
   on(channel: 'profiles', listener: (profiles: string[]) => void): () => void
   on(channel: 'settings', listener: (settings: AppSettingsData) => void): () => void
+  on(channel: 'logs', listener: (logs: Record<LogSource, LogEntry[]>) => void): () => void
   on(channel: 'menu-action', listener: (action: string) => void): () => void
   on(channel: 'open-session', listener: (session: SessionSummary) => void): () => void
 }

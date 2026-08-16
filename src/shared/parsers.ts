@@ -14,62 +14,56 @@ function isValidName(name: string): boolean {
   return /^[A-Za-z0-9_.-]+$/.test(name) && name !== '.' && name !== '..'
 }
 
-function parseGitHubPath(urlString: string): string | null {
-  const withoutProtocol = urlString
-    .replace(/^https:\/\//, '')
-    .replace(/^http:\/\//, '')
-    .replace(/^git\+/, '')
-    .replace(/^ssh:\/\//, '')
-    .replace(/^git@/, '')
-  const slash = withoutProtocol.indexOf('/')
-  if (slash < 0) return null
-  let path = withoutProtocol.slice(slash)
-  const hash = path.indexOf('#')
-  if (hash >= 0) path = path.slice(0, hash)
-  const query = path.indexOf('?')
-  if (query >= 0) path = path.slice(0, query)
-  return path
-}
-
 export class PluginSpecError extends Error {}
+
+function parseGitHubUrl(input: string): GitHubPluginSpec {
+  const normalized = input
+    .replace(/^git\+ssh:\/\/git@github\.com\//i, 'https://github.com/')
+    .replace(/^ssh:\/\/git@github\.com\//i, 'https://github.com/')
+    .replace(/^git\+ssh:\/\/github\.com\//i, 'https://github.com/')
+    .replace(/^git@github\.com:/i, 'https://github.com/')
+    .replace(/^git\+https:\/\/github\.com\//i, 'https://github.com/')
+
+  let parsed: URL
+  try {
+    parsed = new URL(normalized)
+  } catch {
+    throw new PluginSpecError(`无法解析 GitHub 仓库：${input}`)
+  }
+  if (parsed.hostname.toLowerCase() !== 'github.com') {
+    throw new PluginSpecError(`仅支持 github.com 仓库：${input}`)
+  }
+
+  const pieces = parsed.pathname.split('/').filter(Boolean)
+  if (pieces.length < 2) throw new PluginSpecError(`无法解析 GitHub 仓库：${input}`)
+  let ref: string | null = null
+  try {
+    ref = parsed.hash ? decodeURIComponent(parsed.hash.slice(1)) : null
+  } catch {
+    throw new PluginSpecError(`无法解析 GitHub 分支：${input}`)
+  }
+  const repo = stripDotGit(pieces[1])
+  if (pieces.length >= 4 && pieces[2].toLowerCase() === 'tree') {
+    ref = pieces.slice(3).join('/')
+  } else if (pieces.length > 2) {
+    throw new PluginSpecError(
+      `不支持的地址：${input}\n支持 owner/repo、https://github.com/owner/repo 或 git@github.com:owner/repo.git 形式`
+    )
+  }
+  if (!isValidName(pieces[0]) || !isValidName(repo)) {
+    throw new PluginSpecError(`无法解析 GitHub 仓库：${input}`)
+  }
+  const pnpm = `github:${pieces[0]}/${repo}${ref ? `#${ref}` : ''}`
+  return { owner: pieces[0], repository: repo, ref, pnpmArgument: pnpm, displayName: `${pieces[0]}/${repo}${ref ? `@${ref}` : ''}` }
+}
 
 export function parseGitHubSpec(rawInput: string): GitHubPluginSpec {
   const input = rawInput.trim()
   if (!input) throw new PluginSpecError('请输入 GitHub 仓库地址')
 
-  if (input.includes('github.com')) {
-    const normalized = input
-      .replace(/^git\+ssh:\/\/git@github\.com\//, 'https://github.com/')
-      .replace(/^ssh:\/\/git@github\.com\//, 'https://github.com/')
-      .replace(/^git@github\.com:/, 'https://github.com/')
-      .replace(/^git\+https:\/\/github\.com\//, 'https://github.com/')
-      .replace(/^git\+ssh:\/\/github\.com\//, 'https://github.com/')
-
-    const path = parseGitHubPath(normalized)
-    let components: URL | null = null
-    try {
-      components = new URL(normalized)
-    } catch {
-      components = null
-    }
-    if (!path) throw new PluginSpecError(`无法解析 GitHub 仓库：${input}`)
-
-    const pieces = path.split('/').filter(Boolean)
-    if (pieces.length < 2) throw new PluginSpecError(`无法解析 GitHub 仓库：${input}`)
-    let ref = components?.hash ? decodeURIComponent(components.hash.slice(1)) : null
-    const repo = stripDotGit(pieces[1])
-    if (pieces.length >= 4 && pieces[2].toLowerCase() === 'tree') {
-      ref = pieces.slice(3).join('/')
-    } else if (pieces.length > 2) {
-      throw new PluginSpecError(
-        `不支持的地址：${input}\n支持 owner/repo、https://github.com/owner/repo 或 git@github.com:owner/repo.git 形式`
-      )
-    }
-    if (!isValidName(pieces[0]) || !isValidName(repo)) {
-      throw new PluginSpecError(`无法解析 GitHub 仓库：${input}`)
-    }
-    const pnpm = `github:${pieces[0]}/${repo}${ref ? `#${ref}` : ''}`
-    return { owner: pieces[0], repository: repo, ref, pnpmArgument: pnpm, displayName: `${pieces[0]}/${repo}${ref ? `@${ref}` : ''}` }
+  const looksLikeUrl = input.includes('://') || /^git@/i.test(input) || input.toLowerCase().includes('github.com')
+  if (looksLikeUrl) {
+    return parseGitHubUrl(input)
   }
 
   if (input.includes('/')) {
