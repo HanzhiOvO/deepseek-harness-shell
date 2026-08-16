@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dce7ff;
+  --color-brand-200: #b9cdff;
+  --color-brand-300: #8aabff;
+  --color-brand-400: #5b82fb;
+  --color-brand-500: #3b63f0;
+  --color-brand-600: #2b4ad6;
+  --color-brand-700: #2239ad;
+  --color-brand-800: #1b2b7e;
+  --color-brand-900: #131d4d;
+  --color-brand-950: #0a102b;
+
+  --color-ink-50: #f7f8fc;
+  --color-ink-100: #eef0f6;
+  --color-ink-200: #d9dce8;
+  --color-ink-300: #b8bdcd;
+  --color-ink-400: #8b91a5;
+  --color-ink-500: #666c80;
+  --color-ink-600: #494e60;
+  --color-ink-700: #333749;
+  --color-ink-800: #202332;
+  --color-ink-900: #141722;
+  --color-ink-950: #0b0e16;
+
+  --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.12);
+  --shadow-lifted: 0 2px 4px rgb(16 24 40 / 0.06), 0 18px 44px -16px rgb(16 24 40 / 0.22);
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+}
+
+.app-drag {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(120 130 155 / 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(120 130 155 / 0.5);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -600px 0;
+  }
+  100% {
+    background-position: 600px 0;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 1.8s ease-in-out infinite;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(120 130 155 / 0.08) 25%,
+    rgb(120 130 155 / 0.16) 50%,
+    rgb(120 130 155 / 0.08) 75%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.glass {
+  backdrop-filter: blur(18px) saturate(1.5);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.input-base {
+  @apply w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-900 shadow-soft outline-none transition placeholder:text-ink-300 focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-50 dark:placeholder:text-ink-600;
+}

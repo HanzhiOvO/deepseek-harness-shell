@@ -1,4 +1,8 @@
-.build/
+node_modules/
+out/
+release/
 build/
+.build/
 .DS_Store
-*.xcodeproj
+*.log
+*.tsbuildinfo
