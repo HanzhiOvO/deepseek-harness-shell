@@ -21,6 +21,18 @@ struct SmokeMain {
             exit(1)
         }
 
+        print("== 插件清单（应包含 dsh 随附 bundle）==")
+        let pluginManager = PluginManager(environment: environment, settings: settings)
+        pluginManager.refreshProfiles()
+        print("插件数: \(pluginManager.installed.count)")
+        for plugin in pluginManager.installed.prefix(6) {
+            print("  - \(plugin.name) v\(plugin.version ?? "?") inbox=\(plugin.isInbox) bundle=\(plugin.isBundle)")
+        }
+        guard pluginManager.installed.contains(where: { $0.name == "@deepseek-ai/dsh-base" && $0.isInbox }) else {
+            print("SMOKE FAIL: 未显示 dsh 随附内置 bundle")
+            exit(1)
+        }
+
         print("== 同步本地历史会话 ==")
         let sessionStore = SessionStore(environment: environment, settings: settings)
         await sessionStore.sync(force: true)

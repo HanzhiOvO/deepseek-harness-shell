@@ -169,6 +169,7 @@ public enum ProcessRunner {
                     continuation.resume(returning: ProcessResult(exitCode: code, stdout: "", stderr: message, timedOut: false))
                 }
                 managed = process
+                _ = managed // 持有到退出回调，防止短命令提前释放进程对象
             } catch {
                 guard !finished else { return }
                 finished = true

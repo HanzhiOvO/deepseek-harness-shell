@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 import DeepSeekHarnessCore
 
@@ -26,8 +27,18 @@ struct InstallPluginSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("安装插件")
-                .font(.title2.weight(.semibold))
+            HStack(spacing: 12) {
+                BrandMark(size: 44, systemImage: "plus.circle.fill")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("安装插件")
+                        .font(.title2.weight(.semibold))
+                    Text("选择来源并安装到 profile「\(model.plugins.profileName)」")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                TintBadge(text: model.plugins.profileName, systemImage: "shippingbox.fill", color: Theme.accent)
+            }
 
             Picker("安装方式", selection: $kind) {
                 ForEach(InstallKind.allCases) { item in
@@ -36,6 +47,7 @@ struct InstallPluginSheet: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .tint(Theme.accent)
 
             Group {
                 switch kind {
@@ -85,6 +97,7 @@ struct InstallPluginSheet: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
                 .disabled(running || model.plugins.isWorking)
             }
         }
@@ -108,6 +121,34 @@ struct InstallPluginSheet: View {
             if case .success(let urls) = result {
                 folderURL = urls.first
             }
+        }
+        .onAppear {
+            applyPreloadedURL()
+            autofillFromClipboard()
+        }
+    }
+
+    /// 拖入 ZIP / 文件夹时，安装面板自动预填路径。
+    private func applyPreloadedURL() {
+        guard let preloaded = model.installPreloadedURL else { return }
+        switch kind {
+        case .zip where preloaded.pathExtension.lowercased() == "zip":
+            zipURL = preloaded
+        case .folder:
+            folderURL = preloaded
+        default:
+            break
+        }
+    }
+
+    /// 如果剪贴板里是 GitHub 地址，自动填入，少一次粘贴。
+    private func autofillFromClipboard() {
+        guard githubText.isEmpty,
+              let text = NSPasteboard.general.string(forType: .string)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              text.contains("github.com") || (text.contains("/") && !text.contains("\n")) else { return }
+        if (try? GitHubSpecParser.parse(text)) != nil {
+            githubText = text
         }
     }
 

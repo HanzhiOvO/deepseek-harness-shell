@@ -1,4 +1,5 @@
 import DeepSeekHarnessCore
+import Foundation
 import Darwin
 
 var failures = 0
@@ -67,6 +68,41 @@ do {
     let local = WebServerManager.urlFromOutput("listening at http://localhost:3080/")
     expect(local?.port == 3080, "解析 localhost URL")
     expect(WebServerManager.urlFromOutput("some random stdout") == nil, "忽略无关输出")
+}
+
+// 1.1.0 插件主页 / 本地源码路径推导
+do {
+    let github = InstalledPlugin(
+        name: "demo-plugin",
+        spec: "github:deepseek-ai/demo-plugin#main",
+        version: "1.0.0",
+        isBundle: true
+    )
+    expect(github.sourceKind == .github, "github: spec 识别为 GitHub 源")
+    expect(github.externalURL?.absoluteString == "https://github.com/deepseek-ai/demo-plugin/tree/main",
+           "GitHub 插件主页 URL")
+
+    let npm = InstalledPlugin(name: "@scope/pkg", spec: "^1.2.3", version: nil, isBundle: false)
+    expect(npm.externalURL?.absoluteString == "https://www.npmjs.com/package/@scope/pkg", "npm 插件主页 URL")
+
+    let folder = InstalledPlugin(name: "local", spec: "file:/tmp/local-plugin", version: nil, isBundle: false)
+    expect(folder.localSourceURL?.path == "/tmp/local-plugin", "file: spec 推导本地源码路径")
+    expect(folder.externalURL == nil, "本地插件没有外部主页")
+}
+
+// 1.1.0 会话 project 目录推导
+do {
+    let fileURL = URL(fileURLWithPath: "/Users/test/.dsh/sessions/my-project/session-abc/session.jsonl.zstd")
+    let summary = SessionSummary(
+        id: "session-abc",
+        directoryName: "session-abc",
+        workspacePath: "/Users/test/work",
+        title: "hello",
+        createdAt: nil,
+        updatedAt: nil,
+        fileURL: fileURL
+    )
+    expect(summary.projectName == "my-project", "从会话文件路径推导 project 名称")
 }
 
 if failures == 0 {

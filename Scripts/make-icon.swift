@@ -1,8 +1,8 @@
 // 生成 DeepSeek Harness Shell 应用图标（icns 所需 iconset）。
 // 用法：swift Scripts/make-icon.swift <输出 iconset 目录>
 //
-// 注意：所有绘制必须发生在最终要 makeImage() 的那个 CGContext 里，
-// 不要在辅助函数中另建 CGContext（否则画进被丢弃的上下文，图标会是空白）。
+// 视觉：官方 DeepSeek Harness 图标（白色版）叠加 DeepSeek 蓝渐变底色。
+// 注意：所有绘制必须发生在最终要 makeImage() 的那个 CGContext 里。
 import AppKit
 import CoreGraphics
 import ImageIO
@@ -12,64 +12,50 @@ let outputDirectory = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory
 try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
 func drawIcon(in context: CGContext) {
-    // 背景：DeepSeek 蓝渐变圆角方块
     let backgroundRect = CGRect(x: 0, y: 0, width: 1024, height: 1024)
     let backgroundPath = CGPath(
         roundedRect: backgroundRect,
-        cornerWidth: 224,
-        cornerHeight: 224,
+        cornerWidth: 185,
+        cornerHeight: 185,
         transform: nil
     )
+
     context.saveGState()
     context.addPath(backgroundPath)
     context.clip()
 
+    // 1. DeepSeek 蓝背景
     let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
-    let topColor = NSColor(calibratedRed: 0.32, green: 0.49, blue: 1.00, alpha: 1).cgColor
-    let bottomColor = NSColor(calibratedRed: 0.045, green: 0.085, blue: 0.26, alpha: 1).cgColor
-    let gradient = CGGradient(
+    let topColor = NSColor(calibratedRed: 0.24, green: 0.38, blue: 1.00, alpha: 1).cgColor
+    let bottomColor = NSColor(calibratedRed: 0.025, green: 0.065, blue: 0.24, alpha: 1).cgColor
+    let backgroundGradient = CGGradient(
         colorsSpace: colorSpace,
         colors: [topColor, bottomColor] as CFArray,
         locations: [0, 1]
     )!
     context.drawLinearGradient(
-        gradient,
-        start: CGPoint(x: 512, y: 1024),
-        end: CGPoint(x: 512, y: 0),
-        options: []
+        backgroundGradient,
+        start: CGPoint(x: 300, y: 1050),
+        end: CGPoint(x: 750, y: -40),
+        options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
     )
 
-    // 终端窗口卡片：半透明白 + 左上三色灯
-    let card = NSBezierPath(
-        roundedRect: NSRect(x: 168, y: 232, width: 688, height: 560),
-        xRadius: 104,
-        yRadius: 104
-    )
-    NSColor(calibratedWhite: 1, alpha: 0.13).setFill()
-    card.fill()
-
-    let lights: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
-        (1.00, 0.36, 0.36, 272),
-        (1.00, 0.78, 0.32, 322),
-        (0.36, 0.80, 0.44, 372)
-    ]
-    for (r, g, b, x) in lights {
-        NSColor(calibratedRed: r, green: g, blue: b, alpha: 0.95).setFill()
-        NSBezierPath(ovalIn: NSRect(x: x, y: 720, width: 34, height: 34)).fill()
+    // 2. 官方 DeepSeek Harness 图标（白色版）+ 底色
+    let scriptDirectory = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
+    let svgURL = scriptDirectory
+        .appendingPathComponent("../Resources/HarnessIconWhite.svg", isDirectory: false)
+        .standardizedFileURL
+    if let harnessIcon = NSImage(contentsOf: svgURL) {
+        harnessIcon.draw(
+            in: NSRect(x: 152, y: 152, width: 720, height: 720),
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1
+        )
+    } else {
+        fputs("warning: official harness icon not found at \(svgURL.path)\n", stderr)
     }
 
-    // 主视觉：白色 `>_`（等宽字体，重心略下移）
-    let font = NSFont.monospacedSystemFont(ofSize: 290, weight: .bold)
-    let attributes: [NSAttributedString.Key: Any] = [
-        .font: font,
-        .foregroundColor: NSColor.white
-    ]
-    let text = NSAttributedString(string: ">_", attributes: attributes)
-    let textSize = text.size()
-    text.draw(at: NSPoint(
-        x: (1024 - textSize.width) / 2,
-        y: 370 - textSize.height / 2
-    ))
     context.restoreGState()
 }
 
@@ -88,7 +74,6 @@ func render(size: CGFloat, to url: URL) throws {
     let scale = size / 1024.0
     context.scaleBy(x: scale, y: scale)
 
-    // 让 AppKit 路径/文字绘制与 CoreGraphics 操作共用同一个上下文。
     let graphics = NSGraphicsContext(cgContext: context, flipped: false)
     NSGraphicsContext.current = graphics
     NSGraphicsContext.saveGraphicsState()
@@ -118,7 +103,7 @@ for entry in sizes {
     try render(size: entry.size, to: outputDirectory.appendingPathComponent(entry.name))
 }
 
-// 校验：读取最大尺寸 PNG 并抽样，防止再次生成透明/纯色空白图标。
+// 校验：抽样确保不是透明/纯色空白图标。
 func samplePixels(at url: URL, points: [(Int, Int)]) throws -> [UInt8] {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
           let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
@@ -150,7 +135,10 @@ func samplePixels(at url: URL, points: [(Int, Int)]) throws -> [UInt8] {
 }
 
 let checkURL = outputDirectory.appendingPathComponent("icon_512x512@2x.png")
-let checkPoints = [(512, 100), (512, 512), (512, 900), (100, 512), (900, 512)]
+let checkPoints = [
+    (512, 100), (512, 400), (512, 900), (100, 512), (900, 512),
+    (120, 120), (120, 904), (904, 120), (904, 904)
+]
 let samples = try samplePixels(at: checkURL, points: checkPoints)
 let variance = Set(samples).count
 if variance <= 2 {

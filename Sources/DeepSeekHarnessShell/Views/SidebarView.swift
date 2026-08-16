@@ -5,7 +5,11 @@ struct SidebarView: View {
     @EnvironmentObject private var model: AppModel
 
     private var workspaceItems: [SidebarItem] {
-        [.chat, .plugins, .logs, .settings]
+        [.chat, .history, .plugins, .logs, .settings]
+    }
+
+    private var pinnedSessions: [SessionSummary] {
+        model.sessionStore.sessions.filter { model.isPinned($0) }
     }
 
     var body: some View {
@@ -14,6 +18,14 @@ struct SidebarView: View {
                 ForEach(workspaceItems) { item in
                     Label(item.title, systemImage: item.systemImage)
                         .tag(item)
+                }
+            }
+
+            if !pinnedSessions.isEmpty {
+                Section("收藏") {
+                    ForEach(pinnedSessions.prefix(12)) { session in
+                        sessionButton(session, pinned: true)
+                    }
                 }
             }
 
@@ -29,13 +41,7 @@ struct SidebarView: View {
                     .padding(.vertical, 2)
                 } else {
                     ForEach(model.sessionStore.sessions.prefix(40)) { session in
-                        Button {
-                            model.showSession(session)
-                        } label: {
-                            SessionSidebarRow(session: session)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                        sessionButton(session, pinned: model.isPinned(session))
                     }
                 }
             } header: {
@@ -58,20 +64,77 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            SidebarBrandHeader()
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             SidebarFooter()
         }
+    }
+
+    private func sessionButton(_ session: SessionSummary, pinned: Bool) -> some View {
+        Button {
+            model.openSessionInWeb(session)
+        } label: {
+            SessionSidebarRow(session: session, isPinned: pinned)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(pinned ? "取消收藏" : "收藏会话") {
+                model.togglePin(session)
+            }
+            Button("在历史会话中查看") {
+                model.showSession(session)
+            }
+            Button("在 Finder 中显示") {
+                model.sessionStore.revealInFinder(session)
+            }
+        }
+    }
+}
+
+private struct SidebarBrandHeader: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            BrandMark(size: 32, systemImage: "terminal.fill")
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("DeepSeek Harness")
+                    .font(.headline)
+                    .lineLimit(1)
+                Text("Shell \(model.appVersion)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer(minLength: 4)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(.bar)
     }
 }
 
 private struct SessionSidebarRow: View {
     let session: SessionSummary
+    let isPinned: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(session.displayTitle)
-                .font(.callout)
-                .lineLimit(2)
+            HStack(spacing: 5) {
+                Text(session.displayTitle)
+                    .font(.callout)
+                    .lineLimit(2)
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
             HStack(spacing: 6) {
                 Image(systemName: "folder")
                     .font(.system(size: 9))
@@ -97,7 +160,27 @@ private struct SidebarFooter: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
+            Button {
+                model.showCommandPalette = true
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "command")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("快速跳转")
+                        .font(.caption.weight(.medium))
+                    Spacer()
+                    Text("⌘K")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Theme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
             HStack(spacing: 6) {
                 Circle()
                     .fill(environmentColor)
@@ -125,12 +208,6 @@ private struct SidebarFooter: View {
             .font(.caption2)
             .foregroundStyle(.tertiary)
             .lineLimit(1)
-
-            if let version = model.environment.tools.dsh?.version {
-                Text("dsh \(version) · 原生 SwiftUI · 低能耗壳")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)

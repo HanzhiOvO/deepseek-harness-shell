@@ -1,6 +1,29 @@
 import Foundation
 import Combine
 
+/// 应用外观偏好（跟随系统 / 浅色 / 深色）。
+public enum AppAppearance: String, Codable, CaseIterable, Sendable {
+    case system
+    case light
+    case dark
+
+    public var label: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .light: return "浅色"
+        case .dark: return "深色"
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.stars.fill"
+        }
+    }
+}
+
 /// 壳自身的偏好设置，保存于
 /// `~/Library/Application Support/DeepSeekHarnessShell/settings.json`。
 /// 保存 API Key 时目录权限收紧为 0600。
@@ -16,6 +39,9 @@ public final class AppSettings: ObservableObject {
         var apiKey: String = ""
         var customDshPath: String = ""
         var dshHome: String = ""
+        // 1.1.0 新增：使用 optional 解码，兼容旧版设置文件。
+        var appearance: AppAppearance?
+        var pinnedSessionIDs: [String]?
     }
 
     @Published public var autoStartWeb: Bool { didSet { save() } }
@@ -27,6 +53,8 @@ public final class AppSettings: ObservableObject {
     @Published public var apiKey: String { didSet { save() } }
     @Published public var customDshPath: String { didSet { save() } }
     @Published public var dshHome: String { didSet { save() } }
+    @Published public var appearance: AppAppearance { didSet { save() } }
+    @Published public var pinnedSessionIDs: [String] { didSet { save() } }
 
     public let settingsURL: URL
     private let encoder: JSONEncoder
@@ -61,11 +89,43 @@ public final class AppSettings: ObservableObject {
         self.apiKey = disk.apiKey
         self.customDshPath = disk.customDshPath
         self.dshHome = disk.dshHome
+        self.appearance = disk.appearance ?? .system
+        self.pinnedSessionIDs = disk.pinnedSessionIDs ?? []
         self.isLoading = false
     }
 
     public func sanitizedWebPort() -> Int {
         min(max(webPort, 0), 65535)
+    }
+
+    // MARK: - 收藏会话
+
+    public func isPinned(_ sessionID: String) -> Bool {
+        pinnedSessionIDs.contains(sessionID)
+    }
+
+    public func togglePin(_ sessionID: String) {
+        let trimmed = sessionID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if let index = pinnedSessionIDs.firstIndex(of: trimmed) {
+            pinnedSessionIDs.remove(at: index)
+        } else {
+            pinnedSessionIDs.append(trimmed)
+        }
+    }
+
+    public func resetToDefaults() {
+        autoStartWeb = true
+        autoInstallDsh = true
+        stopWhenClosed = true
+        telemetryDisabled = true
+        webPort = 0
+        profileName = "web"
+        apiKey = ""
+        customDshPath = ""
+        dshHome = ""
+        appearance = .system
+        pinnedSessionIDs = []
     }
 
     private func save() {
@@ -79,7 +139,9 @@ public final class AppSettings: ObservableObject {
             profileName: profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "web" : profileName,
             apiKey: apiKey,
             customDshPath: customDshPath.trimmingCharacters(in: .whitespaces),
-            dshHome: dshHome.trimmingCharacters(in: .whitespaces)
+            dshHome: dshHome.trimmingCharacters(in: .whitespaces),
+            appearance: appearance,
+            pinnedSessionIDs: pinnedSessionIDs
         )
         do {
             let dir = settingsURL.deletingLastPathComponent()

@@ -38,12 +38,17 @@ public struct SessionSummary: Identifiable, Equatable, Sendable {
         guard let workspacePath, !workspacePath.isEmpty else { return "未知工作区" }
         return URL(fileURLWithPath: workspacePath).lastPathComponent
     }
+
+    /// 会话所属 project 目录名（dsh sessions/<project>/<session>）。
+    public var projectName: String {
+        fileURL.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
+    }
 }
 
 /// 本地历史会话同步：
 /// - 数据源是 `$DSH_HOME/sessions/<project>/<session>/session.jsonl(.zstd)`，只读不写；
 /// - 首次列出目录 + 文件 mtime/size，只有新增/变化才读内容；
-/// - 内容读取用 Node 内置 zstd 流式解码，读到标题后立即停止，避免解压整段长会话。
+/// - 内容读取优先 `zstd -dc | node(stdin)`，读到标题后立即停止，避免解压整段长会话。
 @MainActor
 public final class SessionStore: ObservableObject {
     @Published public private(set) var sessions: [SessionSummary] = []

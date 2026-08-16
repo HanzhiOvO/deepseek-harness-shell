@@ -79,7 +79,28 @@ struct PluginSmokeMain {
             exit(1)
         }
 
-        // 3) 移除
+        // 3) 更新（本地目录源按原 spec 重新解析，应保持安装）
+        print("== 更新 ZIP 插件 ==")
+        do {
+            guard let target = plugins.installed.first(where: { $0.name == "smoke-zip-plugin" }) else {
+                print("SMOKE FAIL: 找不到待更新插件")
+                exit(1)
+            }
+            try await plugins.update(target)
+            guard plugins.installed.contains(where: { $0.name == "smoke-zip-plugin" }) else {
+                print("SMOKE FAIL: 更新后插件丢失")
+                exit(1)
+            }
+            print("PASS  插件更新命令完成: \(target.name)")
+        } catch {
+            print("SMOKE FAIL: 更新 \(error.localizedDescription)")
+            for entry in plugins.logs.entries.suffix(25) {
+                print("  log: \(entry.text)")
+            }
+            exit(1)
+        }
+
+        // 4) 移除
         print("== 移除文件夹插件 ==")
         do {
             guard let target = plugins.installed.first(where: { $0.name == "smoke-folder-plugin" }) else {

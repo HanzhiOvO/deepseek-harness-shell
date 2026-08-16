@@ -160,13 +160,23 @@ public final class EnvironmentManager: ObservableObject {
     /// 安装/修复 dsh。优先使用当前 npm 全局前缀；不可写则退回 `~/.local`。
     @discardableResult
     public func installDsh() async -> Bool {
+        await installOrUpdateDsh(verb: "安装", packageSpec: "@deepseek-ai/dsh")
+    }
+
+    /// 将 dsh 升级到 npm 上的最新版本（复用与安装相同的用户级前缀策略）。
+    @discardableResult
+    public func updateDsh() async -> Bool {
+        await installOrUpdateDsh(verb: "升级", packageSpec: "@deepseek-ai/dsh@latest")
+    }
+
+    private func installOrUpdateDsh(verb: String, packageSpec: String) async -> Bool {
         guard tools.npm != nil else {
-            state = .failed("缺少 npm，无法自动安装 dsh")
+            state = .failed("缺少 npm，无法\(verb) dsh")
             return false
         }
         isWorking = true
-        state = .installing("正在通过 npm 安装 @deepseek-ai/dsh…")
-        logs.append(.command, "准备安装 @deepseek-ai/dsh")
+        state = .installing("正在\(verb) @deepseek-ai/dsh…")
+        logs.append(.command, "准备\(verb) @deepseek-ai/dsh")
 
         let prefix = npmWritableGlobalPrefix(fallback: FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".local", isDirectory: true).path)
@@ -177,10 +187,10 @@ public final class EnvironmentManager: ObservableObject {
         env["npm_config_prefix"] = prefix
         env["npm_config_loglevel"] = "warn"
 
-        logs.append(.command, "npm install --global --prefix \(prefix) @deepseek-ai/dsh")
+        logs.append(.command, "npm install --global --prefix \(prefix) \(packageSpec)")
         let result = await ProcessRunner.streamAndWait(
             executableURL: npmExecutable!,
-            arguments: ["install", "--global", "--prefix", prefix, "@deepseek-ai/dsh"],
+            arguments: ["install", "--global", "--prefix", prefix, packageSpec],
             environment: env
         ) { [weak self] line, isStderr in
             self?.logs.append(isStderr ? .stderr : .stdout, line)
@@ -192,13 +202,13 @@ public final class EnvironmentManager: ObservableObject {
                 extraBinDirectories: tools.knownBinDirectories + [(prefix as NSString).appendingPathComponent("bin")]
             )
             applySettingsOverrides()
-            logs.append(.success, "@deepseek-ai/dsh 安装完成")
+            logs.append(.success, "@deepseek-ai/dsh \(verb)完成")
             isWorking = false
             await detect()
             return tools.dsh != nil
         } else {
             state = .failed(result.stderr.isEmpty
-                ? "npm 安装失败（退出码 \(result.exitCode)）"
+                ? "npm \(verb)失败（退出码 \(result.exitCode)）"
                 : result.stderr)
             logs.append(.error, state.label)
             isWorking = false
@@ -241,7 +251,7 @@ public final class EnvironmentManager: ObservableObject {
     public func ensurePnpm() async -> Bool {
         if tools.pnpm != nil { return true }
 
-        guard let npm = tools.npm else {
+        guard tools.npm != nil else {
             logs.append(.error, "缺少 npm，无法安装 pnpm")
             return false
         }

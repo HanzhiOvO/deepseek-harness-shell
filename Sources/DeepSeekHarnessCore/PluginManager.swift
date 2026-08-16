@@ -7,12 +7,20 @@ public struct InstalledPlugin: Identifiable, Equatable, Sendable {
     public let spec: String
     public let version: String?
     public let isBundle: Bool
+    public let isInbox: Bool
 
-    public init(name: String, spec: String, version: String?, isBundle: Bool) {
+    public init(
+        name: String,
+        spec: String,
+        version: String?,
+        isBundle: Bool,
+        isInbox: Bool = false
+    ) {
         self.name = name
         self.spec = spec
         self.version = version
         self.isBundle = isBundle
+        self.isInbox = isInbox
     }
 
     public var sourceKind: SourceKind {
@@ -21,6 +29,40 @@ public struct InstalledPlugin: Identifiable, Equatable, Sendable {
         if lower.contains("github:") || lower.contains("git+") || lower.contains("git@") { return .github }
         if lower.hasPrefix("http") && lower.contains(".tgz") { return .zip }
         return .npm
+    }
+
+    /// 本地源码路径（本地文件夹 / ZIP 持久化目录）。
+    public var localSourceURL: URL? {
+        let lower = spec.lowercased()
+        guard lower.hasPrefix("file:") || lower.hasPrefix("link:") else { return nil }
+        guard let parsed = URL(string: spec) else { return nil }
+        return URL(fileURLWithPath: parsed.path, isDirectory: true)
+    }
+
+    /// 插件在网上的主页（GitHub 仓库 / npm 包页），供「打开主页」使用。
+    public var externalURL: URL? {
+        switch sourceKind {
+        case .github:
+            let cleaned = spec
+                .replacingOccurrences(of: "git+https://github.com/", with: "https://github.com/")
+                .replacingOccurrences(of: "git+ssh://git@github.com/", with: "https://github.com/")
+                .replacingOccurrences(of: "git@github.com:", with: "https://github.com/")
+                .replacingOccurrences(of: "github:", with: "https://github.com/")
+            guard let parsed = URLComponents(string: cleaned) else { return nil }
+            let pieces = parsed.path.split(separator: "/").map(String.init)
+            guard pieces.count >= 2 else { return nil }
+            var repo = pieces[1]
+            if repo.lowercased().hasSuffix(".git") { repo = String(repo.dropLast(4)) }
+            var urlString = "https://github.com/\(pieces[0])/\(repo)"
+            if let ref = parsed.fragment?.trimmingCharacters(in: .whitespaces), !ref.isEmpty {
+                urlString += "/tree/\(ref)"
+            }
+            return URL(string: urlString)
+        case .npm:
+            return URL(string: "https://www.npmjs.com/package/\(name)")
+        case .folder, .zip:
+            return nil
+        }
     }
 
     public enum SourceKind {
@@ -130,7 +172,17 @@ public final class PluginManager: ObservableObject {
         let manifestURL = profileDirectory.appendingPathComponent("package.json")
         guard let data = try? Data(contentsOf: manifestURL),
               let manifest = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            installed = []
+            // profile 尚未初始化：仍然显示 dsh 随附的默认 bundle。
+            let defaults = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"]
+            installed = defaults.map { name in
+                InstalledPlugin(
+                    name: name,
+                    spec: "dsh 随附 bundle",
+                    version: self.installedVersion(of: name),
+                    isBundle: true,
+                    isInbox: true
+                )
+            }
             return
         }
 
@@ -140,28 +192,86 @@ public final class PluginManager: ObservableObject {
         let bundles = profileSection?["bundles"] as? [String] ?? []
 
         var result: [InstalledPlugin] = []
+        var namesInDependencies = Set<String>()
+
+        // 1) 用户通过 dsh plugin add 安装的依赖。
         for (name, spec) in dependencies.sorted(by: { $0.key < $1.key }) {
-            let version = self.installedVersion(of: name)
+            namesInDependencies.insert(name)
             result.append(InstalledPlugin(
                 name: name,
                 spec: spec,
-                version: version,
+                version: self.installedVersion(of: name),
                 isBundle: bundles.contains(name)
             ))
         }
-        installed = result
+
+        // 2) dsh 随附的内置 bundle（例如 dsh-base / dsh-web-app）。
+        // 它们不在 dependencies 里，但确实是 profile 已安装并激活的插件。
+        for name in bundles where !namesInDependencies.contains(name) {
+            result.append(InstalledPlugin(
+                name: name,
+                spec: "dsh 随附 bundle",
+                version: self.installedVersion(of: name),
+                isBundle: true,
+                isInbox: true
+            ))
+        }
+
+        installed = result.sorted {
+            if $0.isInbox != $1.isInbox { return !$0.isInbox }
+            return $0.name < $1.name
+        }
     }
 
     private func installedVersion(of packageName: String) -> String? {
-        let manifest = profileDirectory
-            .appendingPathComponent("node_modules", isDirectory: true)
-            .appendingPathComponent(packageName, isDirectory: true)
-            .appendingPathComponent("package.json")
-        guard let data = try? Data(contentsOf: manifest),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
+        let candidates = versionManifestCandidates(for: packageName)
+        for manifest in candidates {
+            guard let data = try? Data(contentsOf: manifest),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                continue
+            }
+            if let version = object["version"] as? String { return version }
         }
-        return object["version"] as? String
+        return nil
+    }
+
+    private func versionManifestCandidates(for packageName: String) -> [URL] {
+        var candidates: [URL] = []
+        let nodeModules = profileDirectory.appendingPathComponent("node_modules", isDirectory: true)
+
+        // pnpm 顶层符号链接。
+        candidates.append(nodeModules.appendingPathComponent(packageName).appendingPathComponent("package.json"))
+
+        // pnpm 虚拟仓库：node_modules/.pnpm/<name>@<version>/node_modules/<name>/package.json
+        let pnpmStore = nodeModules.appendingPathComponent(".pnpm", isDirectory: true)
+        if let children = try? FileManager.default.contentsOfDirectory(atPath: pnpmStore.path) {
+            let prefix = packageName + "@"
+            for child in children.sorted().reversed() where child.hasPrefix(prefix) {
+                let candidate = pnpmStore
+                    .appendingPathComponent(child)
+                    .appendingPathComponent("node_modules")
+                    .appendingPathComponent(packageName)
+                    .appendingPathComponent("package.json")
+                candidates.append(candidate)
+                if candidates.count >= 6 { break }
+            }
+        }
+
+        // dsh 安装位置（内置 bundle 从安装锚点解析）。
+        if let dsh = environment.dshExecutable {
+            var dir = dsh.resolvingSymlinksInPath().deletingLastPathComponent()
+            for _ in 0..<8 {
+                let candidate = dir
+                    .appendingPathComponent("node_modules", isDirectory: true)
+                    .appendingPathComponent(packageName, isDirectory: true)
+                    .appendingPathComponent("package.json")
+                candidates.append(candidate)
+                let parent = dir.deletingLastPathComponent()
+                if parent.path == dir.path { break }
+                dir = parent
+            }
+        }
+        return candidates
     }
 
     // MARK: - 安装
@@ -251,7 +361,26 @@ public final class PluginManager: ObservableObject {
     }
 
     public func remove(_ plugin: InstalledPlugin) async throws {
+        guard !plugin.isInbox else {
+            throw PluginManagerError.invalidPackage("内置 bundle 由 dsh 随附，不能从 profile 中移除")
+        }
         try await runPlugin(arguments: ["remove", plugin.name], logPrefix: "移除 \(plugin.name)")
+    }
+
+    /// 更新已安装插件：npm 源直接升级到 latest；
+    /// GitHub/本地目录源按 package.json 中的既有 spec 重新解析（不改变来源）。
+    public func update(_ plugin: InstalledPlugin) async throws {
+        guard !plugin.isInbox else {
+            throw PluginManagerError.invalidPackage("内置 bundle 随 dsh 一起升级，不需要单独更新")
+        }
+        let arguments: [String]
+        switch plugin.sourceKind {
+        case .npm:
+            arguments = ["update", "--latest", plugin.name]
+        case .github, .folder, .zip:
+            arguments = ["update", plugin.name]
+        }
+        try await runPlugin(arguments: arguments, logPrefix: "更新 \(plugin.name)")
     }
 
     // MARK: - 内部实现

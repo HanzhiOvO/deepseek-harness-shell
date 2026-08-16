@@ -1,15 +1,18 @@
 # DeepSeek Harness Shell（macOS 原生版）
 
+> 当前版本：1.1.0
+
 一个把 **DeepSeek Harness**（官方 `@deepseek-ai/dsh`）包装成 macOS 桌面应用的**原生 SwiftUI 壳**。
 
 它不重新实现 Agent / Session / Tool / Sandbox / Cordis，只负责让内核更好用：
 
 - **自动检测并配置环境**：没有 `dsh` 时自动通过 npm 安装；没有 Node.js 时自动走 Homebrew 或引导下载。
 - **ChatGPT 桌面应用式体验**：侧边栏 + 主工作区 + 工具栏状态胶囊 + 设置场景 + 快捷键。
-- **应用级图形界面**：插件中心、运行日志、环境与设置都是原生窗口，不塞在网页里。
-- **本地历史会话读取与同步**：侧边栏直接列出 `$DSH_HOME/sessions` 下的历史会话，显示标题、工作区与时间，只读不改；回到前台自动刷新。
+- **全局快捷与菜单栏**：⌘K 快速跳转面板；⌘R/⌘. 启动停止服务；⌘+/-/0 缩放网页；菜单栏常驻状态组件（窗口关闭不退出时仍可控制服务与恢复会话）。
+- **应用级图形界面**：插件中心、运行日志、环境与设置都是原生窗口，不塞在网页里；运行日志可按来源/级别筛选、全文搜索并导出为文本。
+- **本地历史会话读取与同步**：侧边栏直接列出 `$DSH_HOME/sessions` 下的历史会话，显示标题、工作区、project 与时间，只读不改；支持收藏（pin）、搜索、排序、复制 ID/路径与 Finder 定位；回到前台自动刷新；点击任意会话会直接在官方 Web UI 中恢复该对话。
 - **三种插件安装方式**：输入 GitHub 仓库地址、上传 ZIP 压缩包、选择本地文件夹（另附 npm 包名方式）。
-- **低资源消耗**：不用 Electron / Chromium，应用本体约 **1.6 MB**；空闲无定时器；服务停止即释放内存。
+- **低资源消耗**：不用 Electron / Chromium，应用包约 **4.6 MB**（zip 2.1 MB）；空闲无定时器；服务停止即释放内存。
 
 > 内核仍是官方 `@deepseek-ai/dsh`。目前 DeepSeek Harness 处于 developer preview，接口可能变化。
 
@@ -44,7 +47,7 @@
 | 维度 | 本原生壳 | 典型 Electron 壳 |
 | --- | --- | --- |
 | 运行时 | SwiftUI/AppKit + 系统 WKWebView | 捆绑 Chromium + Node |
-| 应用体积 | ~1.6 MB（zip ~0.4 MB） | 常 >100 MB |
+| 应用体积 | ~4.6 MB（zip 2.1 MB） | 常 >100 MB |
 | 空闲进程 | 关闭窗口即退出，无驻留 | 常有主/渲染/GPU 多个进程 |
 | GPU | 仅绘制可见内容，支持 App Nap | Chromium 合成器常驻 |
 | 数据 | 复用系统全局 dsh，不复制依赖 | 常把 dsh 打进 asar |
@@ -79,7 +82,8 @@ PATH → ~/.local/bin → ~/.npm-global/bin → ~/Library/pnpm
 
 - `dsh web --host 127.0.0.1 --port 0`：让 OS 分配空闲端口，解析 stdout 中的 URL，加载进 WKWebView。
 - 窗口工具栏显示运行状态胶囊（灰/橙/绿/红），可 `⌘R` 启动、`⌘.` 停止。
-- Web 工具栏提供后退/前进/刷新/在浏览器打开。
+- Web 工具栏提供后退/前进/刷新/在浏览器打开、页面缩放（⌘+ / ⌘− / ⌘0）、复制服务地址与加载进度。
+- 菜单栏状态组件可快速启动/停止、恢复最近会话，配合「关闭窗口不退出」实现后台驻留。
 - 未启动时显示美观的占位页和「一键配置 / 一键启动」卡片。
 - 官方 Web UI 的会话、模型、审批策略全部保留，登录态由 WebKit 持久化。
 
@@ -94,12 +98,13 @@ PATH → ~/.local/bin → ~/.npm-global/bin → ~/Library/pnpm
 | **本地文件夹** | 校验 `package.json` → `file:<path>` 直接安装，不复制源码以省磁盘 |
 | **npm 包名** | 直接 `pnpm add <package>` |
 
-插件卡片显示包名、spec、版本、来源（GitHub/归档/本地/npm）和 **BUNDLE** 徽章，可一键移除。
+插件卡片显示包名、spec、版本、来源（GitHub/归档/本地/npm）和 **BUNDLE** 徽章，可一键移除；支持**更新到最新**、打开 GitHub/npm 主页、在 Finder 中定位本地源码、复制包名/spec 与名称搜索。也可以把 `.zip` 或含 `package.json` 的文件夹**直接拖进插件中心**开始安装。
 
 ### 4. 本地历史会话读取与同步
 
 - 数据源：`$DSH_HOME/sessions/<project>/<session>/session.jsonl(.zstd)`，与 Harness Web UI 完全同一份，壳只读不写。
-- 侧边栏「历史会话」实时列出标题、工作区、更新时间；详情页可复制会话 ID、在 Finder 中定位文件。
+- 侧边栏「历史会话」实时列出标题、工作区、更新时间，并可 pin 收藏；详情页支持搜索、排序（更新时间/创建时间）、收藏筛选、复制会话 ID/文件路径/工作区路径、在 Finder 中定位文件。
+- **恢复会话**：点击历史会话后，壳会确保 Web UI 运行，并定位到会话列表中同 ID 的节点触发打开（找不到时按标题回退），对话内容由 Harness 自行加载，壳不复制会话数据。
 - 同步策略（低能耗）：
   1. 先扫描目录与文件的 mtime/size；
   2. 只有新增/变化才读取内容，缓存未变会话；
@@ -107,12 +112,25 @@ PATH → ~/.local/bin → ~/.npm-global/bin → ~/Library/pnpm
   4. 没有 zstd CLI 时回退 Node 读取首帧头部（仍可显示工作区和时间）。
 - 自动同步时机：应用启动、Web 服务启动、窗口回到前台（内部 5 秒节流）、手动点击同步按钮。
 
+### 4.5 全局快捷键与命令面板
+
+| 快捷键 | 功能 |
+| --- | --- |
+| `⌘R` | 启动服务 |
+| `⌘.` | 停止服务 |
+| `⌘K` | 打开快速跳转面板（搜索会话/功能） |
+| `⌘⇧P` | 打开插件中心 |
+| `⌘+` / `⌘−` / `⌘0` | Web UI 放大 / 缩小 / 实际大小 |
+
+菜单栏组件与命令面板均无轮询定时器，窗口隐藏时不会增加 CPU 占用。
+
 ### 5. 设置
 
 - 启动时自动连接、缺失 dsh 自动安装、关闭窗口时停止服务、关闭遥测。
+- 外观模式：跟随系统 / 浅色 / 深色，即时生效。
 - Web 端口（0 = 自动）、默认 profile、`DSH_HOME`、自定义 dsh 路径。
 - `DEEPSEEK_API_KEY`（可选；仅作为环境变量传给子进程，设置文件权限 0600）。
-- 工具链版本与路径、数据目录入口。
+- 一键升级 dsh 到 npm 最新版；工具链版本与路径可逐项在 Finder 定位；支持重置全部偏好。
 
 ---
 
@@ -129,7 +147,7 @@ open "build/DeepSeek Harness Shell.app"
 产物：
 
 - `build/DeepSeek Harness Shell.app`：已 ad-hoc 签名，可直接双击运行。
-- `build/DeepSeek Harness Shell.zip`：约 0.4 MB。
+- `build/DeepSeek Harness Shell.zip`：约 2.1 MB。
 
 开发运行：
 
@@ -157,7 +175,7 @@ swift run DeepSeekHarnessPluginSmoke      # 临时 DSH_HOME 下：安装 pnpm �
 
 ## 资源设计（低能耗 / 低占用）
 
-1. **不捆绑运行时**：不打包 Electron、Chromium、Node、dsh，应用本体约 2.4 MB（大部分是应用图标）。
+1. **不捆绑运行时**：不打包 Electron、Chromium、Node、dsh，应用包约 4.6 MB（SwiftUI 二进制 3.3 MB + 官方 Harness 鲸鱼图标 1.3 MB）。
 2. **系统 WebKit 复用**：仅当 Web 服务运行时创建 WKWebView，停止/退出后释放，WebKit 内容进程随之退出。
 3. **零轮询**：所有子进程通过 Pipe + readabilityHandler 按行回传；没有周期性 Timer 刷新 UI。
 4. **空闲即停**：默认关闭最后一个窗口就退出并停止 Node 服务；支持 App Nap。
@@ -172,8 +190,8 @@ swift run DeepSeekHarnessPluginSmoke      # 临时 DSH_HOME 下：安装 pnpm �
 
 | 项目 | 实测 |
 | --- | --- |
-| `.app` 体积 | 2.4 MB（含 1024px 全尺寸图标） |
-| zip 体积 | 0.9 MB |
+| `.app` 体积 | 4.6 MB（含官方图标 1024px icns） |
+| zip 体积 | 2.1 MB |
 | 壳主进程 RSS | 约 85–100 MB |
 | dsh web 子进程 RSS | 约 135–190 MB（取决于模型/插件，属内核本身） |
 | 空闲 CPU | 加载完成后 <1% |
