@@ -1,144 +1,130 @@
-# DeepSeek Harness Shell（跨平台桌面版）
+# DeepSeek Harness Shell（轻量跨平台桌面壳）
 
-> 当前版本：2.0.0 · Electron + React + TypeScript + Tailwind CSS
+> 当前版本：2.1.0 · Tauri 2 + React + TypeScript + Tailwind CSS
 
 一个把 **DeepSeek Harness**（官方 `@deepseek-ai/dsh`）包装成现代桌面应用的跨平台壳，支持 **Windows / macOS / Linux**。
 
-v2.0 从 SwiftUI 壳重构为 Web 技术栈：界面更现代、可深度定制，并且三平台共用同一套 UI 与主进程逻辑。
+v2.1 从 Electron 迁移到 **Tauri 2**：前端 UI 完全复用，后端改为 Rust，应用体积和内存占用大幅下降。
+
+| 指标 | Electron v2.0 | **Tauri v2.1** |
+| --- | --- | --- |
+| macOS .app | 230 MB | **12 MB** |
+| 安装包 DMG | 103 MB | **4.6 MB** |
+| 主进程运行方式 | Chromium + Node | **系统 WebView + Rust** |
+| 空闲内存 | 高（多进程） | **低（共享系统 WebView）** |
+
+## 架构
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ DeepSeek Harness Shell（Electron 主进程）                     │
+│ Tauri Rust 后端（单二进制，约 11 MB）                         │
 │                                                              │
-│  对话        ← WebContentsView（内嵌官方 dsh Web UI）         │
-│  插件中心    ← dsh plugin --profile <name> add/remove/update  │
-│  运行日志    ← stdout/stderr 按行流式回传                      │
-│  环境与设置  ← dsh / node / npm / pnpm / git / brew 自检安装  │
-│                                                              │
-│  Renderer（React + Tailwind）：侧边栏 / 命令面板 / 卡片 UI    │
+│  环境检测/安装 · dsh web 生命周期 · 插件管理 · 会话同步       │
+│  设置持久化 · 日志事件 · 系统对话框 · 外部打开                │
 └───────────────────────────┬──────────────────────────────────┘
-                            │ spawn + Pipe，无轮询
-                            ▼
-                   @deepseek-ai/dsh CLI（内核不改）
+                            │ Tauri IPC / Event
+┌───────────────────────────▼──────────────────────────────────┐
+│ React 渲染层（系统 WebView，不捆绑 Chromium）                 │
+│  侧边栏 / 命令面板 / 历史会话 / 插件中心 / 日志 / 设置         │
+│  对话区 iframe 内嵌官方 dsh Web UI                            │
+└──────────────────────────────────────────────────────────────┘
 ```
-
-## 为什么是 Electron
-
-- **真三平台**：一套代码在 Windows（WebView2 内核）、macOS、Linux 上运行；
-- **内嵌官方 Web UI**：用 `WebContentsView` 把 dsh 页面嵌入应用窗口，还能跨源注入会话恢复脚本，这是 iframe 方案做不到的；
-- **同生态**：主进程是 Node，与 dsh CLI / npm / pnpm 天然同构，环境与插件管理最稳；
-- **可定制 UI**：React + Tailwind，彻底解决「原生控件难美化」的问题。
-
-代价是应用包比 SwiftUI 壳更大（Electron 运行时约 200+ MB）。如果未来追求更小体积，可以在保留本前端代码的前提下迁移到 Tauri，主进程逻辑也按服务模块拆好，迁移成本可控。
 
 ## 功能
 
-- **自动环境检测**：探测 `dsh`、`node`、`npm`、`pnpm`、`git`、`brew`，覆盖 Homebrew、nvm、volta、asdf、fnm、mise、Windows npm/Volta/Program Files 目录。
-- **一键配置**：无 dsh 自动 `npm install -g @deepseek-ai/dsh`；无 Node 时 Homebrew 安装或引导下载；pnpm 优先 Corepack，自动生成 shim。
-- **ChatGPT 式工作区**：
-  - 服务状态胶囊、⌘R 启动、⌘. 停止；
-  - Web 工具栏：后退/前进/刷新、缩放（⌘+ / ⌘− / ⌘0）、复制地址、系统浏览器打开；
-  - 未启动时显示品牌占位页与最近会话。
-- **本地历史会话**：
-  - 只读同步 `$DSH_HOME/sessions`，支持 zstd CLI 早停读取与 Node 内置 zstd 回退；
-  - 侧边栏最近会话、收藏（pin）、搜索、按更新/创建时间排序；
-  - 点击会话通过 React fiber 脚本在官方 Web UI 内恢复。
-- **插件中心**：
-  - GitHub 地址 / ZIP 压缩包 / 本地文件夹 / npm 包名四种安装方式；
-  - **直接把 .zip 或插件文件夹拖进窗口**即可安装；
-  - 更新到最新、移除、打开 GitHub/npm 主页、定位本地源码、搜索过滤。
-- **运行日志**：环境 / Web / 插件 / 会话四路日志，按级别筛选、全文搜索、导出 txt。
-- **设置**：外观（跟随系统/浅色/深色）、自动启动/停止、端口、profile、DSH_HOME、API Key、dsh 升级、工具链定位、重置。
-- **全局体验**：⌘K 命令面板、菜单栏/托盘状态组件、最近会话快捷入口、跨平台快捷键。
+- **自动环境检测**：探测 dsh / node / npm / pnpm / git / brew，覆盖 Homebrew、nvm、volta、asdf、fnm、mise、Windows npm/Volta 目录。
+- **一键配置**：无 dsh 自动 npm 安装；无 Node 时 Homebrew 安装或引导下载；pnpm 优先 Corepack，自动生成 shim。
+- **对话工作区**：
+  - iframe 内嵌官方 dsh Web UI（无额外浏览器进程）；
+  - 「独立窗口」按钮创建原生 WebView 窗口，**点击历史会话会打开带注入脚本的窗口并自动定位到该会话**。
+- **本地历史会话**：只读同步 `$DSH_HOME/sessions`，zstd CLI 早停读取；搜索、排序、收藏、复制、Finder/资源管理器定位。
+- **插件中心**：GitHub / ZIP / 本地文件夹 / npm 四种安装方式，**拖文件进窗口安装**、更新、移除、打开主页与源码。
+- **运行日志**：环境 / Web / 插件 / 会话四路日志，按级别筛选、搜索、导出 txt。
+- **设置**：外观、自动启动/停止、端口、profile、DSH_HOME、API Key、升级 dsh、重置。
+- **全局体验**：⌘K 命令面板、拖拽安装、Toast、深色/浅色主题。
 
 ## 快捷键
 
 | 快捷键 | 功能 |
 | --- | --- |
-| `⌘/Ctrl + R` | 启动服务 |
-| `⌘/Ctrl + .` | 停止服务 |
 | `⌘/Ctrl + K` | 命令面板 |
-| `⌘/Ctrl + Shift + P` | 插件中心 |
-| `⌘/Ctrl + Shift + H` | 历史会话 |
-| `⌘/Ctrl + + / - / 0` | Web UI 缩放 |
+| `Esc` | 关闭面板 |
+
+> 启动/停止由顶栏按钮控制。Tauri 默认使用系统窗口标题栏。
 
 ## 开发
 
-要求：Node.js 22.19+（推荐 24+）。
+要求：Node.js 22.19+，Rust 1.85+（`brew install rust` 或 rustup）。
 
 ```bash
 npm install
-npm run dev        # 开发模式（HMR）
-npm run typecheck  # 主进程 + 渲染进程类型检查
-npm test           # 解析器单元测试
-npm run build      # 构建 out/main、out/preload、out/renderer
+npm run dev          # tauri dev（前端 HMR）
+npm run typecheck    # 前端类型检查
+npm test             # 解析器单元测试
+npm run build        # 构建 dist
+npm run build:tauri  # 完整打包
 ```
 
 ### 冒烟测试
 
-不创建窗口、自动执行：环境检测 → 插件清单 → 会话同步 → 启动 dsh web → HTTP 200 → 停止：
+Rust 服务链冒烟（检测→插件清单→会话→启动 dsh web→HTTP 200→停止）：
 
 ```bash
-DSH_SHELL_USER_DATA=$(mktemp -d) DSH_SHELL_SMOKE=1 npx electron .
+DSH_SHELL_USER_DATA=$(mktemp -d) DSH_SHELL_SMOKE=1 cargo run -p deepseek-harness-shell
 ```
 
-附带在临时 DSH_HOME 中验证插件安装/更新/移除：
-
-```bash
-ROOT=$(mktemp -d)
-mkdir -p "$ROOT/userdata" "$ROOT/dshhome"
-printf '{"autoStartWeb":false,"dshHome":"%s/dshhome"}' "$ROOT" > "$ROOT/userdata/settings.json"
-DSH_SHELL_USER_DATA="$ROOT/userdata" DSH_SHELL_SMOKE=1 DSH_SHELL_PLUGIN_SMOKE=1 npx electron .
-```
-
-验证渲染层真实加载与 IPC 数据：
-
-```bash
-DSH_SHELL_USER_DATA=$(mktemp -d) DSH_SHELL_GUI_SMOKE=1 npx electron .
-```
+`DSH_SHELL_USER_DATA` 可指向任意目录，实现便携设置。
 
 ## 打包
 
 ```bash
-npm run pack:mac     # macOS：dmg + zip
-npm run pack:win     # Windows：nsis + zip（建议在 Windows 或 CI 上执行）
-npm run pack:linux   # Linux：AppImage + deb
+npm run pack:mac     # macOS：app + dmg
+npm run pack:win     # Windows：nsis
+npm run pack:linux   # Linux：deb + AppImage
 ```
 
-产物在 `release/`。`resources/icon.png` 是应用图标源，Windows/Linux 发布前建议补一张多尺寸 `.ico`。
-
-> `DSH_SHELL_USER_DATA` 可用于便携模式：把所有壳设置重定向到指定目录。
+产物在 `src-tauri/target/release/bundle/`。macOS 需本机构建；Windows/Linux 建议在对应系统或 CI 上构建（仓库已带 GitHub Actions 三平台工作流）。
 
 ## 目录结构
 
 ```text
 src/
-├── main/                    # Electron 主进程（Node）
-│   ├── core/                # 日志总线、进程运行器
-│   ├── services/            # 环境/Web/插件/会话/设置/内嵌 WebContents
-│   └── index.ts             # 窗口、菜单、托盘、IPC、冒烟模式
-├── preload/                 # contextBridge 安全桥
-├── renderer/                # React + Tailwind UI
-│   ├── components/          # 侧边栏、命令面板、安装弹窗…
-│   └── views/               # 对话/历史/插件/日志/设置
-└── shared/                  # 三端共享类型与解析器
-tests/                       # Vitest 单元测试
-resources/                   # 图标与品牌资源
+├── renderer/           # React + Tailwind UI（Electron 版原样复用）
+│   ├── components/
+│   ├── views/
+│   └── lib/tauriApi.ts # Tauri IPC 桥
+├── shared/             # 类型与解析器
+└── (已移除 Electron 主进程)
+src-tauri/
+├── src/
+│   ├── services.rs     # 环境/Web/插件/会话/设置
+│   ├── commands.rs     # Tauri 命令
+│   ├── models.rs       # 序列化模型
+│   └── lib.rs          # 应用装配
+├── capabilities/       # 权限
+└── tauri.conf.json
+tests/                  # Vitest
 ```
 
-## 数据归属与安全
+## 数据与安全
 
-- 壳设置：Electron `userData/settings.json`（0600）。
-- ZIP 插件源码：`userData/PluginSources/`。
-- Harness 数据仍在 `$DSH_HOME`（默认 `~/.dsh`），壳只读同步会话，不迁移不复制。
-- 渲染进程启用 `contextIsolation`；主进程只向 dsh 子进程传 `DSH_HOME`、`DEEPSEEK_API_KEY`、`DSH_TELEMETRY_DISABLED` 与 PATH。
-- 内嵌 dsh Web UI 使用独立 WebContents，`nodeIntegration` 关闭、`sandbox` 开启；外部链接一律交给系统浏览器。
+- 壳设置：系统应用数据目录 `settings.json`。
+- ZIP 插件源码：应用数据目录 `PluginSources/`。
+- Harness 数据仍在 `$DSH_HOME`（默认 `~/.dsh`），壳只读同步会话。
+- 渲染层无 Node 能力；子进程只传 `DSH_HOME`、`DEEPSEEK_API_KEY`、`DSH_TELEMETRY_DISABLED` 与 PATH。
+- 独立 Harness 窗口使用 Tauri initialization script 自动选择会话；iframe 中的官方页面无法注入脚本，因此自动恢复会话统一走独立窗口。
 
 ## 已知限制
 
-- dsh 为 developer preview，CLI/插件格式变化时需同步 `src/shared/parsers.ts` 与主进程解析器。
-- 无 zstd CLI 的机器上，`.jsonl.zstd` 会话只可能显示目录名/时间（Node 内置 zstd 可解析单帧文件）。
-- Electron 包体积大于原生壳；后续如需更小体积，可保留前端迁移到 Tauri。
+- dsh 为 developer preview，CLI/插件格式变化时需同步 `src/shared/parsers.ts` 与 Rust 解析器。
+- 主窗口内的官方 Web UI 通过 iframe 展示，跨源限制下不能自动点击会话；点击侧边栏会话会自动打开独立窗口恢复。
+- 无 zstd CLI 的机器上，`.jsonl.zstd` 会话只显示目录名与时间。
+
+## 版本历史
+
+- `swift-1.1.0`：SwiftUI 原生版（git tag）。
+- `8c9beb7`：Electron v2.0（git commit）。
+- 当前：Tauri v2.1。
 
 ## License
 

@@ -1,6 +1,8 @@
 node_modules/
 out/
 release/
+dist/
+src-tauri/target/
 build/
 .build/
 .DS_Store

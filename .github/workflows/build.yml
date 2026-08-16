@@ -11,7 +11,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            args: '--bundles app,dmg'
+          - os: windows-latest
+            args: '--bundles nsis'
+          - os: ubuntu-latest
+            args: '--bundles deb,appimage'
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +26,16 @@ jobs:
         with:
           node-version: 24
           cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Install dependencies
         run: npm ci --ignore-scripts=false
@@ -30,22 +46,17 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Build bundles
+      - name: Build renderer
         run: npm run build
 
       - name: Package app
-        run: npm run dist
+        run: npx tauri build ${{ matrix.args }}
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          APPLE_SIGNING_IDENTITY: '-'
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: deepseek-harness-shell-${{ matrix.os }}
-          path: |
-            release/*.dmg
-            release/*.zip
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
+          path: src-tauri/target/release/bundle/**/*
           if-no-files-found: ignore

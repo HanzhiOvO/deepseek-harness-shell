@@ -48,6 +48,7 @@ export interface DesktopApi {
     zoomOut(): Promise<void>
     zoomReset(): Promise<void>
     openExternal(): Promise<void>
+    openWindow(): Promise<void>
     setBounds(bounds: WebBounds): Promise<void>
     openSession(id: string, title: string): Promise<void>
   }
