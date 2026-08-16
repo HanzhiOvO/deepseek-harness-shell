@@ -35,7 +35,7 @@ export default function Placeholder(): React.JSX.Element {
           </div>
           <h1 className="mt-5 text-3xl font-bold tracking-tight text-ink-900 dark:text-white">DeepSeek Harness Shell</h1>
           <p className="text-balance mt-2 max-w-[540px] text-[13px] leading-relaxed text-ink-500 dark:text-ink-400">
-            自动配置环境、管理插件，并把官方 Harness Web UI 装进一个现代、轻盈、跨平台的桌面应用。
+            自动配置环境、管理插件，并把上游 dsh Web UI 装进一个现代、轻盈、跨平台的桌面应用。
           </p>
           <div className="mt-3 flex items-center gap-2">
             <Badge icon={<Leaf size={11} />} text="低能耗" />

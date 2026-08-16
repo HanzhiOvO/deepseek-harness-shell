@@ -31,7 +31,7 @@ export default function ChatView(): React.JSX.Element {
 
         <div className="app-no-drag flex min-w-0 flex-1 items-center gap-2 px-1">
           <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
-          <span className="truncate text-[11px] font-medium text-ink-600 dark:text-ink-300">官方 DeepSeek Harness Web UI</span>
+          <span className="truncate text-[11px] font-medium text-ink-600 dark:text-ink-300">dsh Web UI（上游）</span>
           <span className="truncate font-mono text-[10.5px] text-ink-400">{url.replace(/^https?:\/\//, '')}</span>
         </div>
 
@@ -47,7 +47,7 @@ export default function ChatView(): React.JSX.Element {
         <ToolButton title="在系统浏览器打开" onClick={() => void window.api.web.openExternal()}>
           <ExternalLink size={13} />
         </ToolButton>
-        <ToolButton title="官方仓库" onClick={() => void window.api.shell.openExternal('https://github.com/deepseek-ai/deepseek-harness')}>
+        <ToolButton title="上游 dsh 仓库" onClick={() => void window.api.shell.openExternal('https://github.com/deepseek-ai/deepseek-harness')}>
           <ArrowUpRight size={13} />
         </ToolButton>
       </div>

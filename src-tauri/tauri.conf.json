@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DeepSeek Harness Shell",
-  "version": "2.1.0",
+  "version": "1.0.1",
   "identifier": "com.deepseek.harness.shell",
   "build": {
     "beforeDevCommand": "npm run dev:renderer",

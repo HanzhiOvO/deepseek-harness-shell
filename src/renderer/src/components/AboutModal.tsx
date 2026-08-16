@@ -18,7 +18,7 @@ export default function AboutModal({ open, onClose }: { open: boolean; onClose: 
             </div>
             <div>
               <h2 className="text-lg font-semibold tracking-tight">DeepSeek Harness Shell</h2>
-              <p className="text-xs text-ink-500 dark:text-ink-400">跨平台桌面壳 · v{snapshot.appVersion} · Electron + React</p>
+              <p className="text-xs text-ink-500 dark:text-ink-400">社区项目 · v{snapshot.appVersion} · 不代表 DeepSeek 官方立场</p>
             </div>
           </div>
           <button onClick={onClose} className="grid size-7 place-items-center rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-white/5">

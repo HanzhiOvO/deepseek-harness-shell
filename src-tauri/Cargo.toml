@@ -1,6 +1,6 @@
 [package]
 name = "deepseek-harness-shell"
-version = "2.1.0"
+version = "1.0.1"
 description = "DeepSeek Harness Shell - lightweight cross-platform desktop shell"
 authors = ["DeepSeek Harness Shell contributors"]
 edition = "2021"
