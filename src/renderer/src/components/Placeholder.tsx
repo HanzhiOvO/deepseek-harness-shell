@@ -30,8 +30,8 @@ export default function Placeholder(): React.JSX.Element {
 
       <div className="relative mx-auto flex min-h-full max-w-[760px] flex-col items-center px-8 py-12">
         <div className="animate-fade-up flex flex-col items-center text-center">
-          <div className="grid size-20 place-items-center rounded-[26px] bg-gradient-to-br from-brand-400 via-brand-600 to-brand-950 text-white shadow-lifted">
-            <TerminalSquare size={34} strokeWidth={2} />
+          <div className="grid size-16 place-items-center rounded-[20px] bg-gradient-to-br from-brand-400 via-brand-600 to-brand-950 text-white shadow-lifted">
+            <TerminalSquare size={26} strokeWidth={2} />
           </div>
           <h1 className="mt-5 text-3xl font-bold tracking-tight text-ink-900 dark:text-white">DeepSeek Harness Shell</h1>
           <p className="text-balance mt-2 max-w-[540px] text-[13px] leading-relaxed text-ink-500 dark:text-ink-400">

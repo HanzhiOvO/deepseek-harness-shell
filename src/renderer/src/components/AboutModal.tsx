@@ -13,8 +13,8 @@ export default function AboutModal({ open, onClose }: { open: boolean; onClose: 
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="grid size-14 place-items-center rounded-[18px] bg-gradient-to-br from-brand-400 to-brand-900 text-white shadow-lifted">
-              <TerminalSquare size={24} />
+            <div className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-900 text-white shadow-lifted">
+              <TerminalSquare size={20} />
             </div>
             <div>
               <h2 className="text-lg font-semibold tracking-tight">DeepSeek Harness Shell</h2>

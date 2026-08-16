@@ -10,6 +10,12 @@ use tauri::{Manager, WindowEvent};
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .manage(AppState::new(SettingsService::new()))
         .invoke_handler(tauri::generate_handler![
             app_bootstrap,
@@ -42,9 +48,14 @@ pub fn run() {
             shell_open_path
         ])
         .setup(|app| {
-            initial_setup(app.handle())?;
+            let handle = app.handle().clone();
             if std::env::var("DSH_SHELL_SMOKE").as_deref() == Ok("1") {
-                rust_smoke(app.handle());
+                initial_setup(&handle)?;
+                rust_smoke(&handle);
+            } else {
+                std::thread::spawn(move || {
+                    let _ = initial_setup(&handle);
+                });
             }
             Ok(())
         })
@@ -99,6 +110,18 @@ fn rust_smoke(app: &tauri::AppHandle) {
     println!("ENV {:?}", state.environment.lock().unwrap().state);
     println!("PLUGINS {}", state.plugins.installed.lock().unwrap().len());
     println!("SESSIONS {}", state.sessions.sessions.lock().unwrap().len());
+
+    if std::env::var("DSH_SHELL_UPDATE_SMOKE").as_deref() == Ok("1") {
+        let started = std::time::Instant::now();
+        let settings = state.settings.lock().unwrap().data.clone();
+        let result = {
+            let mut env = state.environment.lock().unwrap();
+            env.install_dsh(app, &settings, true)
+        };
+        println!("UPDATE {} in {:?}s", if result { "PASS" } else { "FAIL" }, started.elapsed().as_secs());
+        app.exit(if result { 0 } else { 1 });
+        return;
+    }
 
     let env = state.environment.lock().unwrap();
     state.web.start(app, &env, &settings);

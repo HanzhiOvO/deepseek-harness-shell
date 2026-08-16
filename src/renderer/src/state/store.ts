@@ -137,7 +137,7 @@ export const appStore = {
 
 if (typeof window !== 'undefined' && window.api) {
   window.api.on('log', (entry) => appStore.appendLog(entry))
-  window.api.on('env-state', (state) => patch({ envState: state }))
+  window.api.on('env-state', (state) => patch({ envState: state, envWorking: state.kind === 'checking' || state.kind === 'installing' }))
   window.api.on('tools', (tools) => patch({ tools }))
   window.api.on('web-state', (state) => patch({ webState: state }))
   window.api.on('web-navigation', (state) => patch({ webNavigation: state }))

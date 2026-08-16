@@ -200,8 +200,8 @@ function Splash(): React.JSX.Element {
   return (
     <div className="grid h-full place-items-center bg-ink-950 text-white">
       <div className="flex flex-col items-center gap-5">
-        <div className="grid size-16 place-items-center rounded-[20px] bg-gradient-to-br from-brand-400 to-brand-900 shadow-lifted">
-          <Command size={28} />
+        <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-900 shadow-lifted">
+          <Command size={24} />
         </div>
         <div className="shimmer h-2 w-40 rounded-full" />
         <div className="text-xs tracking-wide text-ink-400">DeepSeek Harness Shell · 正在启动</div>

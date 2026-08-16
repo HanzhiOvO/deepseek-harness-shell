@@ -29,7 +29,7 @@ export default function Sidebar(): React.JSX.Element {
     <aside className="flex w-[260px] shrink-0 flex-col border-r border-ink-200/70 bg-white/60 dark:border-white/[0.06] dark:bg-ink-900/40">
       <div className="app-drag flex h-14 shrink-0 items-center gap-2.5 px-3.5">
         <div className="grid size-8 place-items-center rounded-[10px] bg-gradient-to-br from-brand-400 to-brand-900 text-white shadow-soft">
-          <TerminalSquare size={16} strokeWidth={2.2} />
+          <TerminalSquare size={14} strokeWidth={2.2} />
         </div>
         <div className="leading-tight">
           <div className="text-[13px] font-semibold tracking-tight">DeepSeek Harness</div>

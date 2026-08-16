@@ -80,9 +80,10 @@ export default function SettingsView(): React.JSX.Element {
               )}
               {snapshot.tools.dsh && snapshot.tools.npm && (
                 <ActionButton
+                  disabled={snapshot.envWorking || snapshot.webState.kind === 'running'}
                   onClick={() => void window.api.environment.updateDsh()}
                   icon={<ArrowDownToDot size={12} />}
-                  text="升级 dsh 到最新版"
+                  text={snapshot.envWorking ? '升级中…' : '升级 dsh 到最新版'}
                   title={snapshot.webState.kind === 'running' ? '升级前请先停止服务' : 'npm install -g @deepseek-ai/dsh@latest'}
                 />
               )}
@@ -255,7 +256,8 @@ function ActionButton({
   text,
   primary = false,
   danger = false,
-  title
+  title,
+  disabled = false
 }: {
   onClick: () => void
   icon: React.ReactNode
@@ -263,12 +265,14 @@ function ActionButton({
   primary?: boolean
   danger?: boolean
   title?: string
+  disabled?: boolean
 }): React.JSX.Element {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       title={title}
-      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-medium shadow-soft transition ${
+      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-medium shadow-soft transition disabled:cursor-not-allowed disabled:opacity-50 ${
         primary
           ? 'bg-gradient-to-br from-brand-400 to-brand-700 font-semibold text-white hover:brightness-110'
           : danger

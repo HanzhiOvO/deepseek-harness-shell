@@ -1,6 +1,7 @@
 use crate::models::*;
 use crate::services::*;
 use std::fs;
+use tauri::async_runtime::spawn_blocking;
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 fn settings_clone(state: &State<AppState>) -> AppSettingsData {
@@ -43,39 +44,64 @@ pub fn app_bootstrap(app: AppHandle, state: State<AppState>) -> BootstrapPayload
 }
 
 #[tauri::command]
-pub fn env_detect(app: AppHandle, state: State<AppState>) -> EnvironmentState {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    env.detect(&app, &settings);
-    env.state.clone()
+pub async fn env_detect(app: AppHandle) -> Result<EnvironmentState, String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        env.detect(&app, &settings);
+        env.state.clone()
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn env_install_dsh(app: AppHandle, state: State<AppState>) -> bool {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    env.install_dsh(&app, &settings, false)
+pub async fn env_install_dsh(app: AppHandle) -> Result<bool, String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        env.install_dsh(&app, &settings, false)
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn env_update_dsh(app: AppHandle, state: State<AppState>) -> bool {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    env.install_dsh(&app, &settings, true)
+pub async fn env_update_dsh(app: AppHandle) -> Result<bool, String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        env.install_dsh(&app, &settings, true)
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn env_install_node(app: AppHandle, state: State<AppState>) -> bool {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    env.install_node(&app, &settings)
+pub async fn env_install_node(app: AppHandle) -> Result<bool, String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        env.install_node(&app, &settings)
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn env_ensure_pnpm(app: AppHandle, state: State<AppState>) -> bool {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    env.ensure_pnpm(&app, &settings)
+pub async fn env_ensure_pnpm(app: AppHandle) -> Result<bool, String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        env.ensure_pnpm(&app, &settings)
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -147,10 +173,15 @@ pub fn web_open_window(app: AppHandle, state: State<AppState>) -> Result<(), Str
 }
 
 #[tauri::command]
-pub fn sessions_sync(app: AppHandle, state: State<AppState>) {
-    let settings = settings_clone(&state);
-    let env = state.environment.lock().unwrap();
-    state.sessions.sync(&app, &settings, &env, true);
+pub async fn sessions_sync(app: AppHandle) -> Result<(), String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let env = state.environment.lock().unwrap();
+        state.sessions.sync(&app, &settings, &env, true);
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -164,9 +195,14 @@ pub fn sessions_reveal(path: String) {
 }
 
 #[tauri::command]
-pub fn plugins_refresh(app: AppHandle, state: State<AppState>) {
-    let settings = settings_clone(&state);
-    state.plugins.refresh(&app, &settings);
+pub async fn plugins_refresh(app: AppHandle) -> Result<(), String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        state.plugins.refresh(&app, &settings);
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -176,58 +212,81 @@ pub fn plugins_set_profile(app: AppHandle, state: State<AppState>, name: String)
 }
 
 #[tauri::command]
-pub fn plugins_install(app: AppHandle, state: State<AppState>, draft: InstallDraft) -> Result<(), String> {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    if env.pnpm_path().is_none() && !env.ensure_pnpm(&app, &settings) {
-        return Err("无法准备 pnpm，请查看运行日志".into());
-    }
-    match draft.kind.as_str() {
-        "github" => state.plugins.install_github(app, draft.github_text.unwrap_or_default(), &env, &settings),
-        "npm" => state.plugins.install_npm(app, draft.npm_text.unwrap_or_default(), &env, &settings),
-        "zip" => state.plugins.install_zip(app, draft.file_path.unwrap_or_default(), &env, &settings),
-        "folder" => state.plugins.install_folder(app, draft.file_path.unwrap_or_default(), None, &env, &settings),
-        _ => Err("未知安装方式".into()),
-    }
+pub async fn plugins_install(app: AppHandle, draft: InstallDraft) -> Result<(), String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        if env.pnpm_path().is_none() && !env.ensure_pnpm(&app, &settings) {
+            return Err("无法准备 pnpm，请查看运行日志".into());
+        }
+        match draft.kind.as_str() {
+            "github" => state.plugins.install_github(app.clone(), draft.github_text.unwrap_or_default(), &env, &settings),
+            "npm" => state.plugins.install_npm(app.clone(), draft.npm_text.unwrap_or_default(), &env, &settings),
+            "zip" => state.plugins.install_zip(app.clone(), draft.file_path.unwrap_or_default(), &env, &settings),
+            "folder" => state.plugins.install_folder(app.clone(), draft.file_path.unwrap_or_default(), None, &env, &settings),
+            _ => Err("未知安装方式".into()),
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn plugins_update(app: AppHandle, state: State<AppState>, name: String) -> Result<(), String> {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    if env.pnpm_path().is_none() && !env.ensure_pnpm(&app, &settings) {
-        return Err("无法准备 pnpm，请查看运行日志".into());
-    }
-    state.plugins.update(app, name, &env, &settings)
+pub async fn plugins_update(app: AppHandle, name: String) -> Result<(), String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        if env.pnpm_path().is_none() && !env.ensure_pnpm(&app, &settings) {
+            return Err("无法准备 pnpm，请查看运行日志".into());
+        }
+        state.plugins.update(app.clone(), name, &env, &settings)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn plugins_remove(app: AppHandle, state: State<AppState>, name: String) -> Result<(), String> {
-    let settings = settings_clone(&state);
-    let mut env = state.environment.lock().unwrap();
-    if env.pnpm_path().is_none() && !env.ensure_pnpm(&app, &settings) {
-        return Err("无法准备 pnpm，请查看运行日志".into());
-    }
-    state.plugins.remove(app, name, &env, &settings)
+pub async fn plugins_remove(app: AppHandle, name: String) -> Result<(), String> {
+    spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let settings = settings_clone(&state);
+        let mut env = state.environment.lock().unwrap();
+        if env.pnpm_path().is_none() && !env.ensure_pnpm(&app, &settings) {
+            return Err("无法准备 pnpm，请查看运行日志".into());
+        }
+        state.plugins.remove(app.clone(), name, &env, &settings)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn plugins_pick_zip(app: AppHandle) -> Option<String> {
-    use tauri_plugin_dialog::DialogExt;
-    let picked = app.dialog().file().add_filter("ZIP", &["zip"]).blocking_pick_file();
-    match picked {
-        Some(path) => path.into_path().ok().map(|p| p.to_string_lossy().to_string()),
-        None => None,
-    }
+pub async fn plugins_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
+    spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        let picked = app.dialog().file().add_filter("ZIP", &["zip"]).blocking_pick_file();
+        match picked {
+            Some(path) => path.into_path().ok().map(|p| p.to_string_lossy().to_string()),
+            None => None,
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn plugins_pick_folder(app: AppHandle) -> Option<String> {
-    use tauri_plugin_dialog::DialogExt;
-    match app.dialog().file().blocking_pick_folder() {
-        Some(path) => path.into_path().ok().map(|p| p.to_string_lossy().to_string()),
-        None => None,
-    }
+pub async fn plugins_pick_folder(app: AppHandle) -> Result<Option<String>, String> {
+    spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        match app.dialog().file().blocking_pick_folder() {
+            Some(path) => path.into_path().ok().map(|p| p.to_string_lossy().to_string()),
+            None => None,
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -248,14 +307,18 @@ pub fn logs_clear(state: State<AppState>, source: Option<String>) {
 }
 
 #[tauri::command]
-pub fn logs_export(app: AppHandle, text: String, default_name: String) -> bool {
-    use tauri_plugin_dialog::DialogExt;
-    let picked = app.dialog().file().set_file_name(&default_name).add_filter("文本", &["txt"]).blocking_save_file();
-    if let Some(path) = picked.and_then(|p| p.into_path().ok()) {
-        fs::write(path, text).is_ok()
-    } else {
-        false
-    }
+pub async fn logs_export(app: AppHandle, text: String, default_name: String) -> Result<bool, String> {
+    spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        let picked = app.dialog().file().set_file_name(&default_name).add_filter("文本", &["txt"]).blocking_save_file();
+        if let Some(path) = picked.and_then(|p| p.into_path().ok()) {
+            fs::write(path, text).is_ok()
+        } else {
+            false
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]

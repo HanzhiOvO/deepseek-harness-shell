@@ -320,6 +320,9 @@ impl EnvironmentService {
     }
 
     pub fn install_dsh(&mut self, app: &AppHandle, settings: &AppSettingsData, update: bool) -> bool {
+        if self.is_working {
+            return false;
+        }
         if self.npm_path().is_none() {
             self.state = EnvironmentState::Failed { label: "缺少 npm，无法安装 dsh".into(), can_install: false, detail: String::new() };
             let _ = app.emit("event:env-state", &self.state);
@@ -339,7 +342,7 @@ impl EnvironmentService {
         env.insert("npm_config_loglevel".into(), "warn".into());
 
         emit_log(app, "environment", "command", format!("npm install --global --prefix {prefix} {package}"));
-        let result = run_streaming_wait(app, "environment", self.npm_path().unwrap(), &["install", "--global", "--prefix", &prefix, package], Some(&env));
+        let result = run_streaming_wait(app, "environment", self.npm_path().unwrap(), &["install", "--global", "--prefix", &prefix, package, "--no-audit", "--no-fund"], Some(&env));
 
         self.is_working = false;
         if result.code == Some(0) {
@@ -359,6 +362,9 @@ impl EnvironmentService {
     }
 
     pub fn install_node(&mut self, app: &AppHandle, settings: &AppSettingsData) -> bool {
+        if self.is_working {
+            return false;
+        }
         let Some(brew) = self.tools.brew.clone() else {
             self.state = EnvironmentState::Failed { label: "未找到 Homebrew".into(), can_install: false, detail: String::new() };
             return false;
@@ -379,6 +385,9 @@ impl EnvironmentService {
     }
 
     pub fn ensure_pnpm(&mut self, app: &AppHandle, settings: &AppSettingsData) -> bool {
+        if self.is_working {
+            return false;
+        }
         if self.tools.pnpm.is_some() {
             return true;
         }
@@ -425,7 +434,7 @@ impl EnvironmentService {
         let _ = fs::create_dir_all(format!("{prefix}/bin"));
         let mut env = self.spawn_environment.clone();
         env.insert("npm_config_prefix".into(), prefix.clone());
-        let result = run_streaming_wait(app, "environment", self.npm_path().unwrap(), &["install", "--global", "--prefix", &prefix, "pnpm"], Some(&env));
+        let result = run_streaming_wait(app, "environment", self.npm_path().unwrap(), &["install", "--global", "--prefix", &prefix, "pnpm", "--no-audit", "--no-fund"], Some(&env));
         if result.code == Some(0) {
             let mut dirs = self.tools.known_bin_directories.clone();
             dirs.insert(0, format!("{prefix}/bin"));
