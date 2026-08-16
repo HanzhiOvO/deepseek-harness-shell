@@ -19,6 +19,14 @@
 
 ---
 
+> ## Windows / Linux 测试说明
+>
+> 当前 Windows 和 Linux 安装包已经通过 GitHub Actions 构建，但我目前还没有在真实的 Windows 或 Linux 设备上完成实际运行验证。如果你在使用过程中发现启动、安装、Web UI、插件或其他问题，麻烦提交 [Issue](https://github.com/HanzhiOvO/deepseek-harness-shell/issues)，并尽量附上系统版本、安装包类型、复现步骤和相关日志，我会尽力快速修复。
+>
+> 如果你有功能建议、界面改进意见或使用体验反馈，也欢迎提出。
+
+---
+
 ## 为什么是 Tauri
 
 本项目目前使用 **Tauri 2 + React + TypeScript + Tailwind CSS**：前端 UI 用 Web 技术构建，后端用 Rust，运行时复用系统 WebView。
