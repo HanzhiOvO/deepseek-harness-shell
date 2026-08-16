@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-shell",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "DeepSeek Harness 跨平台桌面壳：Windows / macOS / Linux，原生级体验",
   "author": "DeepSeek Harness Shell contributors",
   "license": "MIT",

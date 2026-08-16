@@ -1,6 +1,6 @@
 # DeepSeek Harness Shell
 
-> 🧩 **dsh 社区桌面壳** · 轻量 · 跨平台 · 当前版本 1.1.0
+> 🧩 **dsh 社区桌面壳** · 轻量 · 跨平台 · 当前版本 1.1.1
 
 一个把 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`@deepseek-ai/dsh`）包装成现代桌面应用的社区项目，支持 **Windows / macOS / Linux**。
 
@@ -51,7 +51,7 @@
 
 ### 从发布包安装
 
-在 [Releases](../../releases) 下载对应平台产物，当前稳定版为 **v1.1.0**：
+在 [Releases](../../releases) 下载对应平台产物，当前稳定版为 **v1.1.1**：
 
 - Windows：`nsis` 安装包或 zip；
 - macOS：`dmg` 或 `.app`；
@@ -130,7 +130,8 @@ src-tauri/src/
 
 ## 版本历史
 
-- 当前：**1.1.0**（Tauri 跨平台版）
+- 当前：**1.1.1**（Tauri 跨平台版）
+- `1.1.1`：修复 Linux 大小写敏感环境下测试目录无法发现的问题，并调整 CI 顺序，确保先构建前端再运行 Tauri Clippy。
 - `1.1.0`：修复 Web/插件进程生命周期、设置与 profile 同步、日志留存、数据目录和插件回滚；增加托盘驻留、自动安装 dsh、启动失败重试、响应式界面、可访问性改进和放大的统一应用图标。
 - `1.0.1`：修复启动白屏、dsh 升级卡死、图标边距和社区项目声明，增加单实例锁。
 - 历史：`swift-1.1.0` SwiftUI 原型、Electron 原型保留在 git 历史中
