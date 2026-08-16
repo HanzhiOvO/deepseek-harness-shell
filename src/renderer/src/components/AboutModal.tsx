@@ -27,9 +27,14 @@ export default function AboutModal({ open, onClose }: { open: boolean; onClose: 
         </div>
 
         <p className="mt-4 text-[13px] leading-relaxed text-ink-600 dark:text-ink-300">
-          把官方 DeepSeek Harness 装进 Windows / macOS / Linux 的原生级桌面体验：自动配置环境、插件中心、会话同步、运行日志与内嵌 Web
+          把上游 DeepSeek Harness 装进 Windows / macOS / Linux 的轻量桌面体验：自动配置环境、插件中心、会话同步、运行日志与内嵌 dsh Web
           UI。应用不捆绑 dsh / Node.js / pnpm，数据仍保存在你的 DSH_HOME。
         </p>
+
+        <div className="mt-3 rounded-xl border border-amber-300/60 bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+          本应用是 <b>dsh 社区项目</b>，由社区开发者维护，与 DeepSeek 公司及 DeepSeek Harness
+          官方团队无关；不代表官方立场，也不是官方作品。
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           <FeatureBadge icon={<Leaf size={12} />} text="低能耗" />
@@ -43,7 +48,7 @@ export default function AboutModal({ open, onClose }: { open: boolean; onClose: 
               onClick={() => void window.api.shell.openExternal('https://github.com/deepseek-ai/deepseek-harness')}
               className="rounded-lg px-2 py-1 font-medium text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
             >
-              官方 dsh 仓库
+              上游 dsh 仓库
             </button>
             <button
               onClick={() => void window.api.shell.openExternal('https://nodejs.org/zh-cn/download')}
