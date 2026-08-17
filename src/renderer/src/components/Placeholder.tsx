@@ -3,9 +3,7 @@ import {
   ArrowDownToDot,
   ArrowRight,
   Blocks,
-  Cpu,
   HardDrive,
-  Leaf,
   MessageSquare,
   Play,
   RefreshCw,
@@ -34,14 +32,6 @@ export default function Placeholder(): React.JSX.Element {
             <AppMark className="size-full rounded-[16px]" />
           </div>
           <h1 className="mt-5 text-3xl font-bold tracking-tight text-ink-900 dark:text-white">DeepSeek Harness Shell</h1>
-          <p className="text-balance mt-2 max-w-[540px] text-[13px] leading-relaxed text-ink-500 dark:text-ink-400">
-            自动配置环境、管理插件，并把上游 dsh Web UI 装进一个现代、轻盈、跨平台的桌面应用。
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <Badge icon={<Leaf size={11} />} text="低能耗" />
-            <Badge icon={<Blocks size={11} />} text="Windows · macOS · Linux" />
-            <Badge icon={<Cpu size={11} />} text="零轮询" />
-          </div>
         </div>
 
         <div className="animate-fade-up mt-9 w-full max-w-[600px]" style={{ animationDelay: '60ms' }}>
@@ -202,15 +192,6 @@ function GhostButton({ onClick, text, icon }: { onClick: () => void; text: strin
       {icon}
       {text}
     </button>
-  )
-}
-
-function Badge({ icon, text }: { icon: React.ReactNode; text: string }): React.JSX.Element {
-  return (
-    <span className="flex items-center gap-1.5 rounded-full border border-ink-200 bg-white/70 px-2.5 py-1 text-[10.5px] font-medium text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-400">
-      {icon}
-      {text}
-    </span>
   )
 }
 

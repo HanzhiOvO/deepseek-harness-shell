@@ -15,9 +15,10 @@ import {
 } from 'lucide-react'
 import { appStore, useAppStore } from '../state/store'
 import InstallPluginModal, { type InstallDraftState } from '../components/InstallPluginModal'
+import PluginSectionTabs from '../components/PluginSectionTabs'
 import type { InstalledPlugin } from '@shared/types'
 
-export default function PluginsView(): React.JSX.Element {
+export default function PluginsView({ onSectionChange }: { onSectionChange: (section: import('../components/PluginSectionTabs').PluginSection) => void }): React.JSX.Element {
   const snapshot = useAppStore()
   const [query, setQuery] = useState('')
   const [modal, setModal] = useState<InstallDraftState | null>(null)
@@ -87,7 +88,9 @@ export default function PluginsView(): React.JSX.Element {
           </div>
         </div>
 
-        <div className="mt-3 flex h-8 min-w-0 max-w-[420px] items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 shadow-soft dark:border-white/10 dark:bg-white/[0.04]">
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <PluginSectionTabs section="installed" onChange={onSectionChange} />
+          <div className="flex h-8 min-w-0 max-w-[420px] flex-1 items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 shadow-soft dark:border-white/10 dark:bg-white/[0.04]">
           <Search size={13} className="shrink-0 text-ink-400" />
           <input
             value={query}
@@ -95,6 +98,7 @@ export default function PluginsView(): React.JSX.Element {
             placeholder="搜索插件名称或安装 spec"
             className="min-w-0 flex-1 bg-transparent text-[12px] text-ink-900 outline-none placeholder:text-ink-300 dark:text-ink-50 dark:placeholder:text-ink-600"
           />
+          </div>
         </div>
       </header>
 

@@ -302,6 +302,10 @@ impl EnvironmentService {
         self.tools.pnpm.as_ref().map(|tool| tool.path.clone())
     }
 
+    pub fn git_path(&self) -> Option<String> {
+        self.tools.git.as_ref().map(|tool| tool.path.clone())
+    }
+
     pub fn detect(&mut self, app: &AppHandle, settings: &AppSettingsData) {
         if self.is_working {
             return;
@@ -910,6 +914,11 @@ pub struct CommandOutput {
 
 type LineHandler = Box<dyn Fn(&str, bool) + Send + Sync>;
 
+struct StreamOptions<'a> {
+    cwd: Option<&'a Path>,
+    on_line: Option<LineHandler>,
+}
+
 fn run_capture(
     program: &str,
     args: &[&str],
@@ -954,6 +963,46 @@ pub fn run_streaming_wait(
         program,
         args.iter().map(|s| s.to_string()).collect(),
         env_map,
+        move |code, error| {
+            let _ = tx.send(CommandOutput {
+                code,
+                stdout: String::new(),
+                stderr: error.unwrap_or_default(),
+            });
+        },
+    ) {
+        Ok(_pid) => rx.recv().unwrap_or(CommandOutput {
+            code: None,
+            stdout: String::new(),
+            stderr: "进程未返回".into(),
+        }),
+        Err(error) => CommandOutput {
+            code: None,
+            stdout: String::new(),
+            stderr: error,
+        },
+    }
+}
+
+pub fn run_streaming_wait_in_dir(
+    app: &AppHandle,
+    source: &str,
+    program: String,
+    args: &[String],
+    cwd: &Path,
+    env_map: Option<&HashMap<String, String>>,
+) -> CommandOutput {
+    let (tx, rx) = mpsc::channel::<CommandOutput>();
+    match spawn_streaming_core_with_cwd(
+        app,
+        source,
+        program,
+        args.to_vec(),
+        env_map,
+        StreamOptions {
+            cwd: Some(cwd),
+            on_line: None,
+        },
         move |code, error| {
             let _ = tx.send(CommandOutput {
                 code,
@@ -1024,7 +1073,33 @@ fn spawn_streaming_core<F>(
 where
     F: FnOnce(Option<i32>, Option<String>) + Send + 'static,
 {
+    spawn_streaming_core_with_cwd(
+        app,
+        source,
+        program,
+        args,
+        env_map,
+        StreamOptions { cwd: None, on_line },
+        on_exit,
+    )
+}
+
+fn spawn_streaming_core_with_cwd<F>(
+    app: &AppHandle,
+    source: &str,
+    program: String,
+    args: Vec<String>,
+    env_map: Option<&HashMap<String, String>>,
+    options: StreamOptions<'_>,
+    on_exit: F,
+) -> Result<u32, String>
+where
+    F: FnOnce(Option<i32>, Option<String>) + Send + 'static,
+{
     let (mut command, actual_args) = base_command(&program, &args, env_map);
+    if let Some(cwd) = options.cwd {
+        command.current_dir(cwd);
+    }
     command
         .args(&actual_args)
         .stdout(Stdio::piped())
@@ -1039,7 +1114,7 @@ where
     let source_stdout = source.to_string();
     let source_stderr = source.to_string();
     let source_exit = source.to_string();
-    let on_line_arc = on_line.map(Arc::new);
+    let on_line_arc = options.on_line.map(Arc::new);
 
     if let Some(stdout) = stdout {
         let on_line_arc = on_line_arc.clone();
@@ -1485,6 +1560,9 @@ impl PluginService {
         settings: &AppSettingsData,
     ) -> Result<(), String> {
         let spec = parse_github_spec(&input)?;
+        if let Some(package_path) = spec.package_path.clone() {
+            return self.install_github_package(app, spec, package_path, env_service, settings);
+        }
         self.run_plugin(
             &app,
             &["add".into(), spec.pnpm],
@@ -1492,6 +1570,141 @@ impl PluginService {
             env_service,
             settings,
         )
+    }
+
+    fn install_github_package(
+        &self,
+        app: AppHandle,
+        spec: GitHubSpec,
+        package_path: String,
+        env_service: &EnvironmentService,
+        settings: &AppSettingsData,
+    ) -> Result<(), String> {
+        let package_path = safe_package_path(&package_path)?;
+        let git = env_service
+            .git_path()
+            .ok_or_else(|| "缺少 git，无法构建 GitHub 插件源码".to_string())?;
+        let pnpm = env_service
+            .pnpm_path()
+            .ok_or_else(|| "缺少 pnpm，无法构建 GitHub 插件源码".to_string())?;
+        let staging = app
+            .path()
+            .temp_dir()
+            .map(|path| path.join(format!("dsh-github-plugin-{}", std::process::id())))
+            .map_err(|error| error.to_string())?;
+        let _ = fs::remove_dir_all(&staging);
+        fs::create_dir_all(&staging).map_err(|error| error.to_string())?;
+        let result = (|| -> Result<(), String> {
+            let clone_dir = staging.join("repo");
+            let clone_url = format!("https://github.com/{}/{}.git", spec.owner, spec.repository);
+            let clone_args = [
+                "clone".into(),
+                "--depth".into(),
+                "1".into(),
+                clone_url,
+                clone_dir.to_string_lossy().to_string(),
+            ];
+            let clone_result = run_streaming_wait(
+                &app,
+                "plugins",
+                git,
+                &clone_args.iter().map(String::as_str).collect::<Vec<_>>(),
+                Some(&env_service.spawn_environment),
+            );
+            if clone_result.code != Some(0) {
+                return Err("无法克隆 GitHub 插件源码，请查看运行日志".into());
+            }
+
+            let package_root = clone_dir.join(&package_path);
+            let manifest_path = package_root.join("package.json");
+            let raw_manifest = fs::read_to_string(&manifest_path)
+                .map_err(|_| "GitHub 插件子目录缺少 package.json".to_string())?;
+            let manifest = serde_json::from_str::<serde_json::Value>(&raw_manifest)
+                .map_err(|error| format!("无法解析 GitHub 插件 package.json：{error}"))?;
+            let package_name = manifest
+                .get("name")
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| "GitHub 插件 package.json 缺少 name".to_string())?
+                .to_string();
+            let main_file = manifest
+                .get("main")
+                .and_then(|value| value.as_str())
+                .unwrap_or("lib/index.js");
+
+            let install_result = run_streaming_wait_in_dir(
+                &app,
+                "plugins",
+                pnpm.clone(),
+                &["install".into(), "--ignore-scripts=false".into()],
+                &clone_dir,
+                Some(&env_service.spawn_environment),
+            );
+            if install_result.code != Some(0) {
+                return Err("GitHub 插件依赖安装失败，请查看运行日志".into());
+            }
+            let build_result = run_streaming_wait_in_dir(
+                &app,
+                "plugins",
+                pnpm,
+                vec!["--filter".into(), package_name.clone(), "build".into()].as_slice(),
+                &clone_dir,
+                Some(&env_service.spawn_environment),
+            );
+            if build_result.code != Some(0) {
+                return Err(format!(
+                    "GitHub 插件 {package_name} 构建失败，请查看运行日志"
+                ));
+            }
+            if !package_root.join(main_file).exists() {
+                return Err(format!(
+                    "GitHub 插件 {package_name} 构建完成但缺少 {main_file}"
+                ));
+            }
+
+            let sources_root = app_data_directory(&app)
+                .map(|path| path.join("PluginSources"))
+                .ok_or_else(|| "无法定位应用数据目录".to_string())?;
+            fs::create_dir_all(&sources_root).map_err(|error| error.to_string())?;
+            let directory_name = safe_plugin_directory_name(&package_name);
+            let destination = sources_root.join(&directory_name);
+            let backup =
+                sources_root.join(format!(".{directory_name}.backup-{}", std::process::id()));
+            let had_existing = destination.exists();
+            if had_existing {
+                let _ = fs::remove_dir_all(&backup);
+                fs::rename(&destination, &backup).map_err(|error| error.to_string())?;
+            }
+            if let Err(error) = fs::rename(&package_root, &destination) {
+                if had_existing {
+                    let _ = fs::rename(&backup, &destination);
+                }
+                return Err(error.to_string());
+            }
+
+            let local_spec = format!("file://{}", destination.to_string_lossy());
+            let install_result = self.run_plugin(
+                &app,
+                &["add".into(), local_spec],
+                &format!("安装 {}@{}", spec.display, package_path),
+                env_service,
+                settings,
+            );
+            match install_result {
+                Ok(()) => {
+                    let _ = fs::remove_dir_all(&backup);
+                    Ok(())
+                }
+                Err(error) => {
+                    let _ = fs::remove_dir_all(&destination);
+                    if had_existing {
+                        let _ = fs::rename(&backup, &destination);
+                    }
+                    Err(error)
+                }
+            }
+        })();
+        let _ = fs::remove_dir_all(&staging);
+        result
     }
 
     pub fn install_npm(
@@ -1795,8 +2008,11 @@ pub fn parse_github_spec(input: &str) -> Result<GitHubSpec, String> {
 }
 
 pub struct GitHubSpec {
+    pub owner: String,
+    pub repository: String,
     pub display: String,
     pub pnpm: String,
+    pub package_path: Option<String>,
 }
 
 fn build_spec(
@@ -1825,7 +2041,18 @@ fn build_spec(
         Some(reference) => format!("{owner}/{repo}@{reference}"),
         None => format!("{owner}/{repo}"),
     };
-    Ok(GitHubSpec { display, pnpm })
+    let package_path = reference
+        .as_deref()
+        .and_then(|value| value.strip_prefix("path:"))
+        .map(|value| value.trim_matches('/').to_string())
+        .filter(|value| !value.is_empty());
+    Ok(GitHubSpec {
+        owner,
+        repository: repo,
+        display,
+        pnpm,
+        package_path,
+    })
 }
 
 fn strip_git_suffix(name: &str) -> String {
@@ -1847,6 +2074,18 @@ fn safe_plugin_directory_name(name: &str) -> String {
     } else {
         candidate
     }
+}
+
+fn safe_package_path(path: &str) -> Result<String, String> {
+    let normalized = path.trim_matches('/');
+    if normalized.is_empty()
+        || normalized.split('/').any(|part| {
+            part.is_empty() || part == "." || part == ".." || part.chars().any(char::is_control)
+        })
+    {
+        return Err("GitHub 插件子目录路径不安全".into());
+    }
+    Ok(normalized.to_string())
 }
 
 fn source_kind(spec: &str) -> &'static str {
@@ -2318,6 +2557,13 @@ mod tests {
         assert_eq!(
             parse_github_spec("git@github.com:a/b.git").unwrap().pnpm,
             "github:a/b"
+        );
+        assert_eq!(
+            parse_github_spec("a/b#path:/packages/dsh-skin")
+                .unwrap()
+                .package_path
+                .as_deref(),
+            Some("packages/dsh-skin")
         );
         assert!(parse_github_spec("https://evil-github.com/a/b").is_err());
     }

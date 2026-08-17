@@ -57,7 +57,7 @@ const EMPTY_TOOLS: Toolchain = {
 let snapshot: AppSnapshot = {
   initialized: false,
   initializationError: null,
-  appVersion: '1.1.1',
+  appVersion: '1.2.0',
   view: 'chat',
   paletteOpen: false,
   dataDirs: { dshHome: '', profileDirectory: '', settingsDirectory: '', pluginSourcesDirectory: '' },

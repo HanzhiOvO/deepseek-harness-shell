@@ -1,6 +1,5 @@
 import {
   Blocks,
-  History,
   MessageSquare,
   Pin,
   RefreshCw,
@@ -14,7 +13,6 @@ import AppMark from './AppMark'
 
 const NAV_ITEMS = [
   { id: 'chat', label: '对话', icon: MessageSquare },
-  { id: 'history', label: '历史会话', icon: History },
   { id: 'plugins', label: '插件中心', icon: Blocks },
   { id: 'logs', label: '运行日志', icon: ScrollText },
   { id: 'settings', label: '环境与设置', icon: Settings }

@@ -18,9 +18,9 @@ import { appStore, useAppStore } from './state/store'
 import Sidebar from './components/Sidebar'
 import ChatView from './views/ChatView'
 import HistoryView from './views/HistoryView'
-import PluginsView from './views/PluginsView'
 import LogsView from './views/LogsView'
 import SettingsView from './views/SettingsView'
+import PluginWorkspaceView from './views/PluginWorkspaceView'
 import CommandPalette from './components/CommandPalette'
 import Toasts from './components/Toasts'
 import AboutModal from './components/AboutModal'
@@ -29,7 +29,7 @@ import AppMark from './components/AppMark'
 const VIEW_META = {
   chat: { title: '对话', subtitle: 'DeepSeek Harness 工作区', icon: MessageSquare },
   history: { title: '历史会话', subtitle: '本地会话记录', icon: History },
-  plugins: { title: '插件中心', subtitle: '管理 profile 插件', icon: Blocks },
+  plugins: { title: '插件中心', subtitle: '已安装插件与社区市场', icon: Blocks },
   logs: { title: '运行日志', subtitle: '环境 / 服务 / 插件', icon: ScrollText },
   settings: { title: '环境与设置', subtitle: '工具链与偏好', icon: Settings }
 } as const
@@ -76,7 +76,7 @@ export default function App(): React.JSX.Element {
         <main className="min-w-0 flex-1 overflow-hidden">
           {snapshot.view === 'chat' && <ChatView />}
           {snapshot.view === 'history' && <HistoryView />}
-          {snapshot.view === 'plugins' && <PluginsView />}
+          {snapshot.view === 'plugins' && <PluginWorkspaceView />}
           {snapshot.view === 'logs' && <LogsView />}
           {snapshot.view === 'settings' && <SettingsView />}
         </main>

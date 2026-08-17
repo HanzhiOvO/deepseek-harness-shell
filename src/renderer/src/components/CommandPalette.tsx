@@ -8,7 +8,7 @@ import {
   ScrollText,
   Search,
   Settings,
-  Square
+  Square,
 } from 'lucide-react'
 import { appStore, useAppStore } from '../state/store'
 import { relativeTime } from '@shared/parsers'
@@ -53,7 +53,7 @@ export default function CommandPalette(): React.JSX.Element {
     const views = [
       { id: 'chat', label: '对话工作区', subtitle: '内嵌官方 Harness Web UI', icon: 'view' as const, view: 'chat' },
       { id: 'history', label: '历史会话', subtitle: '浏览本地会话记录', icon: 'view' as const, view: 'history' },
-      { id: 'plugins', label: '插件中心', subtitle: '管理 profile 插件', icon: 'view' as const, view: 'plugins' },
+      { id: 'plugins', label: '插件中心', subtitle: '已安装插件与 GitHub 社区市场', icon: 'view' as const, view: 'plugins' },
       { id: 'logs', label: '运行日志', subtitle: '环境 / 服务 / 插件日志', icon: 'view' as const, view: 'logs' },
       { id: 'settings', label: '环境与设置', subtitle: '工具链与偏好设置', icon: 'view' as const, view: 'settings' }
     ]
